@@ -30,10 +30,11 @@ import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.geometry.Insets;
 import javafx.scene.control.IndexedCell;
-import javafx.scene.control.TableColumn;
-import javafx.scene.control.TableRow;
-import javafx.scene.control.TableView;
-import javafx.scene.control.cell.PropertyValueFactory;
+import javafx.scene.control.TreeItem;
+import javafx.scene.control.TreeTableColumn;
+import javafx.scene.control.TreeTableRow;
+import javafx.scene.control.TreeTableView;
+import javafx.scene.control.cell.TreeItemPropertyValueFactory;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -43,41 +44,44 @@ import test.com.sun.javafx.scene.control.test.Person;
 
 import static org.junit.Assert.assertEquals;
 
-public class TableRowSkinTest {
+public class TreeTableRowSkinTest {
 
-    private TableView<Person> tableView;
+    private TreeTableView<Person> treeTableView;
     private StageLoader stageLoader;
 
     @Before
     public void before() {
-        tableView = new TableView<>();
+        treeTableView = new TreeTableView<>();
 
-        TableColumn<Person, String> firstNameCol = new TableColumn<>("Firstname");
-        firstNameCol.setCellValueFactory(new PropertyValueFactory<>("firstName"));
-        TableColumn<Person, String> lastNameCol = new TableColumn<>("Lastname");
-        lastNameCol.setCellValueFactory(new PropertyValueFactory<>("lastName"));
-        TableColumn<Person, String> emailCol = new TableColumn<>("Email");
-        emailCol.setCellValueFactory(new PropertyValueFactory<>("email"));
-        TableColumn<Person, Integer> ageCol = new TableColumn<>("Age");
-        ageCol.setCellValueFactory(new PropertyValueFactory<>("age"));
+        TreeTableColumn<Person, String> firstNameCol = new TreeTableColumn<>("Firstname");
+        firstNameCol.setCellValueFactory(new TreeItemPropertyValueFactory<>("firstName"));
+        TreeTableColumn<Person, String> lastNameCol = new TreeTableColumn<>("Lastname");
+        lastNameCol.setCellValueFactory(new TreeItemPropertyValueFactory<>("lastName"));
+        TreeTableColumn<Person, String> emailCol = new TreeTableColumn<>("Email");
+        emailCol.setCellValueFactory(new TreeItemPropertyValueFactory<>("email"));
+        TreeTableColumn<Person, Integer> ageCol = new TreeTableColumn<>("Age");
+        ageCol.setCellValueFactory(new TreeItemPropertyValueFactory<>("age"));
 
-        tableView.getColumns().addAll(firstNameCol, lastNameCol, emailCol, ageCol);
+        treeTableView.getColumns().addAll(firstNameCol, lastNameCol, emailCol, ageCol);
 
-        ObservableList<Person> items = FXCollections.observableArrayList(
-                new Person("firstName1", "lastName1", "email1@javafx.com", 1),
-                new Person("firstName2", "lastName2", "email2@javafx.com", 2),
-                new Person("firstName3", "lastName3", "email3@javafx.com", 3),
-                new Person("firstName4", "lastName4", "email4@javafx.com", 4)
+        ObservableList<TreeItem<Person>> items = FXCollections.observableArrayList(
+                new TreeItem<>(new Person("firstName1", "lastName1", "email1@javafx.com", 1)),
+                new TreeItem<>(new Person("firstName2", "lastName2", "email2@javafx.com", 2)),
+                new TreeItem<>(new Person("firstName3", "lastName3", "email3@javafx.com", 3)),
+                new TreeItem<>(new Person("firstName4", "lastName4", "email4@javafx.com", 4))
         );
 
-        tableView.setItems(items);
+        TreeItem<Person> root = new TreeItem<>();
+        root.getChildren().addAll(items);
+        treeTableView.setRoot(root);
+        treeTableView.setShowRoot(false);
 
-        stageLoader = new StageLoader(tableView);
+        stageLoader = new StageLoader(treeTableView);
     }
 
     @Test
-    public void tableRowShouldHonorPadding() {
-        IndexedCell cell = VirtualFlowTestUtils.getCell(tableView, 0);
+    public void treeTableRowShouldHonorPadding() {
+        IndexedCell cell = VirtualFlowTestUtils.getCell(treeTableView, 0);
 
         double minWidth = cell.minWidth(-1);
         double prefWidth = cell.prefWidth(-1);
@@ -89,16 +93,16 @@ public class TableRowSkinTest {
         double maxHeight = cell.maxHeight(-1);
         double height = cell.getHeight();
 
-        tableView.setRowFactory(tableView -> {
-            TableRow row = new TableRow();
+        treeTableView.setRowFactory(treeTableView -> {
+            TreeTableRow row = new TreeTableRow();
             row.setPadding(new Insets(10, 20, 30, 40));
             return row;
         });
 
-        tableView.refresh();
+        treeTableView.refresh();
         Toolkit.getToolkit().firePulse();
 
-        cell = VirtualFlowTestUtils.getCell(tableView, 0);
+        cell = VirtualFlowTestUtils.getCell(treeTableView, 0);
 
         // Insets left 40 + right 20 = 60
         assertEquals(minWidth + 60, cell.minWidth(-1), 0);
@@ -114,8 +118,10 @@ public class TableRowSkinTest {
     }
 
     @Test
-    public void tableRowWithCellSizeShouldHonorPadding() {
-        IndexedCell cell = VirtualFlowTestUtils.getCell(tableView, 0);
+    public void treeTableRowWithFixedCellSizeShouldIgnoreVerticalPadding() {
+        treeTableView.setFixedCellSize(24);
+
+        IndexedCell cell = VirtualFlowTestUtils.getCell(treeTableView, 0);
 
         double minWidth = cell.minWidth(-1);
         double prefWidth = cell.prefWidth(-1);
@@ -127,17 +133,54 @@ public class TableRowSkinTest {
         double maxHeight = cell.maxHeight(-1);
         double height = cell.getHeight();
 
-        tableView.setRowFactory(tableView -> {
-            TableRow row = new TableRow();
+        treeTableView.setRowFactory(treeTableView -> {
+            TreeTableRow row = new TreeTableRow();
+            row.setPadding(new Insets(10, 20, 30, 40));
+            return row;
+        });
+
+        treeTableView.refresh();
+        Toolkit.getToolkit().firePulse();
+
+        cell = VirtualFlowTestUtils.getCell(treeTableView, 0);
+
+        // Insets left 40 + right 20 = 60
+        assertEquals(minWidth + 60, cell.minWidth(-1), 0);
+        assertEquals(prefWidth + 60, cell.prefWidth(-1), 0);
+        assertEquals(maxWidth + 60, cell.maxWidth(-1), 0);
+        assertEquals(width + 60, cell.getWidth(), 0);
+
+        assertEquals(minHeight, cell.minHeight(-1), 0);
+        assertEquals(prefHeight, cell.prefHeight(-1), 0);
+        assertEquals(maxHeight, cell.maxHeight(-1), 0);
+        assertEquals(height, cell.getHeight(), 0);
+    }
+
+    @Test
+    public void treeTableRowWithCellSizeShouldHonorPadding() {
+        IndexedCell cell = VirtualFlowTestUtils.getCell(treeTableView, 0);
+
+        double minWidth = cell.minWidth(-1);
+        double prefWidth = cell.prefWidth(-1);
+        double maxWidth = cell.maxWidth(-1);
+        double width = cell.getWidth();
+
+        double minHeight = cell.minHeight(-1);
+        double prefHeight = cell.prefHeight(-1);
+        double maxHeight = cell.maxHeight(-1);
+        double height = cell.getHeight();
+
+        treeTableView.setRowFactory(treeTableView -> {
+            TreeTableRow row = new TreeTableRow();
             row.setStyle("-fx-cell-size: 34px");
             row.setPadding(new Insets(10, 20, 30, 40));
             return row;
         });
 
-        tableView.refresh();
+        treeTableView.refresh();
         Toolkit.getToolkit().firePulse();
 
-        cell = VirtualFlowTestUtils.getCell(tableView, 0);
+        cell = VirtualFlowTestUtils.getCell(treeTableView, 0);
 
         // Insets left 40 + right 20 = 60
         assertEquals(minWidth + 60, cell.minWidth(-1), 0);
@@ -154,47 +197,8 @@ public class TableRowSkinTest {
     }
 
     @Test
-    public void tableRowWithFixedSizeShouldIgnoreVerticalPadding() {
-        tableView.setFixedCellSize(24);
-
-        IndexedCell cell = VirtualFlowTestUtils.getCell(tableView, 0);
-
-        double minWidth = cell.minWidth(-1);
-        double prefWidth = cell.prefWidth(-1);
-        double maxWidth = cell.maxWidth(-1);
-        double width = cell.getWidth();
-
-        double minHeight = cell.minHeight(-1);
-        double prefHeight = cell.prefHeight(-1);
-        double maxHeight = cell.maxHeight(-1);
-        double height = cell.getHeight();
-
-        tableView.setRowFactory(tableView -> {
-            TableRow row = new TableRow();
-            row.setPadding(new Insets(10, 20, 30, 40));
-            return row;
-        });
-
-        tableView.refresh();
-        Toolkit.getToolkit().firePulse();
-
-        cell = VirtualFlowTestUtils.getCell(tableView, 0);
-
-        // Insets left 40 + right 20 = 60
-        assertEquals(minWidth + 60, cell.minWidth(-1), 0);
-        assertEquals(prefWidth + 60, cell.prefWidth(-1), 0);
-        assertEquals(maxWidth + 60, cell.maxWidth(-1), 0);
-        assertEquals(width + 60, cell.getWidth(), 0);
-
-        assertEquals(minHeight, cell.minHeight(-1), 0);
-        assertEquals(prefHeight, cell.prefHeight(-1), 0);
-        assertEquals(maxHeight, cell.maxHeight(-1), 0);
-        assertEquals(height, cell.getHeight(), 0);
-    }
-
-    @Test
     public void removedColumnsShouldRemoveCorrespondingCellsInRowFixedCellSize() {
-        tableView.setFixedCellSize(24);
+        treeTableView.setFixedCellSize(24);
         removedColumnsShouldRemoveCorrespondingCellsInRowImpl();
     }
 
@@ -205,7 +209,7 @@ public class TableRowSkinTest {
 
     @Test
     public void invisibleColumnsShouldRemoveCorrespondingCellsInRowFixedCellSize() {
-        tableView.setFixedCellSize(24);
+        treeTableView.setFixedCellSize(24);
         invisibleColumnsShouldRemoveCorrespondingCellsInRowImpl();
     }
 
@@ -221,25 +225,27 @@ public class TableRowSkinTest {
 
     private void invisibleColumnsShouldRemoveCorrespondingCellsInRowImpl() {
         // Set the last 2 columns invisible.
-        tableView.getColumns().get(tableView.getColumns().size() - 1).setVisible(false);
-        tableView.getColumns().get(tableView.getColumns().size() - 2).setVisible(false);
+        treeTableView.getColumns().get(treeTableView.getColumns().size() - 1).setVisible(false);
+        treeTableView.getColumns().get(treeTableView.getColumns().size() - 2).setVisible(false);
 
         Toolkit.getToolkit().firePulse();
 
         // We set 2 columns to invisible, so the cell count should be decremented by 2 as well.
-        assertEquals(tableView.getColumns().size() - 2,
-                VirtualFlowTestUtils.getCell(tableView, 0).getChildrenUnmodifiable().size());
+        // Note: TreeTableView has an additional children - the disclosure node.
+        assertEquals(treeTableView.getColumns().size() - 1,
+                VirtualFlowTestUtils.getCell(treeTableView, 0).getChildrenUnmodifiable().size());
     }
 
     private void removedColumnsShouldRemoveCorrespondingCellsInRowImpl() {
         // Remove the last 2 columns.
-        tableView.getColumns().remove(tableView.getColumns().size() - 1, tableView.getColumns().size());
+        treeTableView.getColumns().remove(treeTableView.getColumns().size() - 2, treeTableView.getColumns().size());
 
         Toolkit.getToolkit().firePulse();
 
         // We removed 2 columns, so the cell count should be decremented by 2 as well.
-        assertEquals(tableView.getColumns().size(),
-                VirtualFlowTestUtils.getCell(tableView, 0).getChildrenUnmodifiable().size());
+        // Note: TreeTableView has an additional children - the disclosure node.
+        assertEquals(treeTableView.getColumns().size() + 1,
+                VirtualFlowTestUtils.getCell(treeTableView, 0).getChildrenUnmodifiable().size());
     }
 
 }
