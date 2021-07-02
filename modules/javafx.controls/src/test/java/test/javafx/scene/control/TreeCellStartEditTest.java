@@ -116,7 +116,6 @@ public class TreeCellStartEditTest {
 
         treeCell.startEdit();
 
-        // Only when the tree view and the cell itself is editable, it can get in editing state.
         boolean expectedEditingState = isTreeViewEditable && isCellEditable;
         assertEquals(expectedEditingState, treeCell.isEditing());
 

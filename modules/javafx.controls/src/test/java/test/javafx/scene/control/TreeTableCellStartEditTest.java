@@ -119,12 +119,12 @@ public class TreeTableCellStartEditTest {
 
     /**
      * A {@link TreeTableCell} (or sub implementation) should be editable (thus, can be in editing state), if the
-     * corresponding table, column, row and cell is editable.
+     * corresponding tree table, column, row and cell is editable.
      *
      * @param isTreeTableEditable true, when the tree table should be editable, false otherwise
      * @param isColumnEditable true, when the column should be editable, false otherwise
      * @param isRowEditable true, when the row should be editable, false otherwise
-     * @param isCellEditable true, when the cell be editable, false otherwise
+     * @param isCellEditable true, when the cell should be editable, false otherwise
      */
     private void testStartEditImpl(boolean isTreeTableEditable, boolean isColumnEditable, boolean isRowEditable, boolean isCellEditable) {
         assertFalse(treeTableCell.isEditing());
@@ -136,7 +136,6 @@ public class TreeTableCellStartEditTest {
 
         treeTableCell.startEdit();
 
-        // Only when the table, column, row and the cell itself is editable, it can get in editing state.
         boolean expectedEditingState = isTreeTableEditable && isColumnEditable && isRowEditable && isCellEditable;
         assertEquals(expectedEditingState, treeTableCell.isEditing());
 

@@ -121,6 +121,7 @@ public class TableCellStartEditTest {
      * @param isTableEditable true, when the table should be editable, false otherwise
      * @param isColumnEditable true, when the column should be editable, false otherwise
      * @param isRowEditable true, when the row should be editable, false otherwise
+     * @param isCellEditable true, when the cell should be editable, false otherwise
      */
     private void testStartEditImpl(boolean isTableEditable, boolean isColumnEditable, boolean isRowEditable, boolean isCellEditable) {
         assertFalse(tableCell.isEditing());

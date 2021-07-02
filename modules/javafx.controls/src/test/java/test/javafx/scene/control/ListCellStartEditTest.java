@@ -91,9 +91,9 @@ public class ListCellStartEditTest {
 
         listCell.updateListView(listView);
 
-        for (boolean isListEditable : EDITABLE_STATES) {
+        for (boolean isListViewEditable : EDITABLE_STATES) {
             for (boolean isCellEditable : EDITABLE_STATES) {
-                testStartEditImpl(isListEditable, isCellEditable);
+                testStartEditImpl(isListViewEditable, isCellEditable);
             }
         }
     }
@@ -102,7 +102,8 @@ public class ListCellStartEditTest {
      * A {@link ListCell} (or sub implementation) should be editable (thus, can be in editing state), if the
      * corresponding list view and cell is editable.
      *
-     * @param isListViewEditable true, when the table should be editable, false otherwise
+     * @param isListViewEditable true, when the list view should be editable, false otherwise
+     * @param isCellEditable true, when the cell should be editable, false otherwise
      */
     private void testStartEditImpl(boolean isListViewEditable, boolean isCellEditable) {
         assertFalse(listCell.isEditing());
@@ -112,7 +113,6 @@ public class ListCellStartEditTest {
 
         listCell.startEdit();
 
-        // Only when the list view and the cell itself is editable, it can get in editing state.
         boolean expectedEditingState = isListViewEditable && isCellEditable;
         assertEquals(expectedEditingState, listCell.isEditing());
 
