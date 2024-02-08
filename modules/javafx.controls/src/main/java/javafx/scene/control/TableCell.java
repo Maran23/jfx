@@ -243,23 +243,28 @@ public class TableCell<S,T> extends IndexedCell<T> {
                         cleanUpTableViewListeners(weakTableViewRef.get());
                     }
 
-                    if (get() != null) {
-                        sm = get().getSelectionModel();
+                    TableView<S> newTableView = get();
+                    if (newTableView != null) {
+                        sm = newTableView.getSelectionModel();
                         if (sm != null) {
                             sm.getSelectedCells().addListener(weakSelectedListener);
                         }
 
-                        fm = get().getFocusModel();
+                        fm = newTableView.getFocusModel();
                         if (fm != null) {
                             fm.focusedCellProperty().addListener(weakFocusedListener);
                         }
 
-                        get().editingCellProperty().addListener(weakEditingListener);
-                        get().getVisibleLeafColumns().addListener(weakVisibleLeafColumnsListener);
+                        newTableView.editingCellProperty().addListener(weakEditingListener);
+                        newTableView.getVisibleLeafColumns().addListener(weakVisibleLeafColumnsListener);
 
-                        weakTableViewRef = new WeakReference<>(get());
+                        weakTableViewRef = new WeakReference<>(newTableView);
                     }
 
+                    updateItem(-1);
+                    updateSelection();
+                    updateFocus();
+                    updateEditing();
                     updateColumnIndex();
                 }
 

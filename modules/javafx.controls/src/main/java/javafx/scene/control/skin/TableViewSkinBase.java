@@ -158,56 +158,11 @@ public abstract class TableViewSkinBase<M, S, C extends Control, I extends Index
 
     private int visibleColCount;
 
-    boolean needCellsRecreated = true;
-    boolean needCellsReconfigured = false;
-
-    private int itemCount = -1;
-
-
-
     /* *************************************************************************
      *                                                                         *
      * Listeners                                                               *
      *                                                                         *
      **************************************************************************/
-
-    private ListChangeListener<S> rowCountListener = c -> {
-        while (c.next()) {
-            if (c.wasReplaced()) {
-                // RT-28397: Support for when an item is replaced with itself (but
-                // updated internal values that should be shown visually).
-
-                // The ListViewSkin equivalent code here was updated to use the
-                // flow.setDirtyCell(int) API, but it was left alone here, otherwise
-                // our unit test for RT-36220 fails as we do not handle the case
-                // where the TableCell gets updated (only the TableRow does).
-                // Ideally we would use the dirtyCell API:
-                //
-                // for (int i = c.getFrom(); i < c.getTo(); i++) {
-                //     flow.setCellDirty(i);
-                // }
-                itemCount = 0;
-                break;
-            } else if (c.getRemovedSize() == itemCount) {
-                // RT-22463: If the user clears out an items list then we
-                // should reset all cells (in particular their contained
-                // items) such that a subsequent addition to the list of
-                // an item which equals the old item (but is rendered
-                // differently) still displays as expected (i.e. with the
-                // updated display, not the old display).
-                itemCount = 0;
-                break;
-            }
-        }
-
-        // fix for RT-37853
-        if (getSkinnable() instanceof TableView) {
-            ((TableView)getSkinnable()).edit(-1, null);
-        }
-
-        markItemCountDirty();
-        getSkinnable().requestLayout();
-    };
 
     private InvalidationListener widthListener = observable -> {
         // This forces the horizontal scrollbar to show when the column
@@ -221,8 +176,6 @@ public abstract class TableViewSkinBase<M, S, C extends Control, I extends Index
         }
     };
 
-    private WeakListChangeListener<S> weakRowCountListener =
-            new WeakListChangeListener<>(rowCountListener);
     private WeakInvalidationListener weakWidthListener =
             new WeakInvalidationListener(widthListener);
 
@@ -289,36 +242,6 @@ public abstract class TableViewSkinBase<M, S, C extends Control, I extends Index
             }
         });
 
-        final ObjectProperty<ObservableList<S>> itemsProperty = TableSkinUtils.itemsProperty(this);
-        updateTableItems(null, itemsProperty.get());
-
-        lh.addInvalidationListener(itemsProperty, new InvalidationListener() {
-            private WeakReference<ObservableList<S>> weakItemsRef = new WeakReference<>(itemsProperty.get());
-
-            @Override public void invalidated(Observable observable) {
-                ObservableList<S> oldItems = weakItemsRef.get();
-                weakItemsRef = new WeakReference<>(itemsProperty.get());
-                updateTableItems(oldItems, itemsProperty.get());
-            }
-        });
-
-        final ObservableMap<Object, Object> properties = control.getProperties();
-        properties.remove(Properties.REFRESH);
-        properties.remove(Properties.RECREATE);
-        lh.addMapChangeListener(properties, (c) -> {
-            if (!c.wasAdded()) {
-                return;
-            }
-            if (Properties.REFRESH.equals(c.getKey())) {
-                refreshView();
-                getSkinnable().getProperties().remove(Properties.REFRESH);
-            } else if (Properties.RECREATE.equals(c.getKey())) {
-                needCellsRecreated = true;
-                refreshView();
-                getSkinnable().getProperties().remove(Properties.RECREATE);
-            }
-        });
-
         lh.addEventHandler(control, ScrollToEvent.<TC>scrollToColumn(), (ev) -> {
             scrollHorizontally(ev.getScrollTarget());
         });
@@ -338,7 +261,7 @@ public abstract class TableViewSkinBase<M, S, C extends Control, I extends Index
             Callback<C, I> oldFactory = rowFactory;
             rowFactory = rowFactoryProperty.get();
             if (oldFactory != rowFactory) {
-                requestRebuildCells();
+                flow.recreateCells();
             }
         });
 
@@ -388,9 +311,6 @@ public abstract class TableViewSkinBase<M, S, C extends Control, I extends Index
 
         getChildren().removeAll(tableHeaderRow, flow, columnReorderOverlay, columnReorderLine);
 
-        final ObjectProperty<ObservableList<S>> itemsProperty = TableSkinUtils.itemsProperty(this);
-        updateTableItems(itemsProperty.get(), null);
-
         super.dispose();
     }
 
@@ -430,15 +350,6 @@ public abstract class TableViewSkinBase<M, S, C extends Control, I extends Index
         }
 
         super.layoutChildren(x, y, w, h);
-
-        if (needCellsRecreated) {
-            flow.recreateCells();
-        } else if (needCellsReconfigured) {
-            flow.reconfigureCells();
-        }
-
-        needCellsRecreated = false;
-        needCellsReconfigured = false;
 
         final double baselineOffset = table.getLayoutBounds().getHeight() / 2;
 
@@ -562,28 +473,8 @@ public abstract class TableViewSkinBase<M, S, C extends Control, I extends Index
 
     /** {@inheritDoc} */
     @Override protected void updateItemCount() {
+        super.updateItemCount();
         updatePlaceholderRegionVisibility();
-
-        int oldCount = itemCount;
-        int newCount = getItemCount();
-
-        itemCount = newCount;
-
-        if (itemCount == 0) {
-            flow.getHbar().setValue(0.0);
-        }
-
-        // if this is not called even when the count is the same, we get a
-        // memory leak in VirtualFlow.sheet.children. This can probably be
-        // optimised in the future when time permits.
-        flow.setCellCount(newCount);
-
-        if (newCount == oldCount) {
-            needCellsReconfigured = true;
-        } else if (oldCount == 0) {
-            // see comments above, this is used as an alternative to flow.setDirtyCell(int)
-            requestRebuildCells();
-        }
     }
 
     private void checkContentWidthState() {
@@ -715,19 +606,6 @@ public abstract class TableViewSkinBase<M, S, C extends Control, I extends Index
         flow.setPosition(1);
     }
 
-    private void updateTableItems(ObservableList<S> oldList, ObservableList<S> newList) {
-        if (oldList != null) {
-            oldList.removeListener(weakRowCountListener);
-        }
-
-        if (newList != null) {
-            newList.addListener(weakRowCountListener);
-        }
-
-        markItemCountDirty();
-        getSkinnable().requestLayout();
-    }
-
     Region getColumnReorderLine() {
         return columnReorderLine;
     }
@@ -851,7 +729,6 @@ public abstract class TableViewSkinBase<M, S, C extends Control, I extends Index
 
     private void updateVisibleLeafColumnWidthListeners(
             List<? extends TC> added, List<? extends TC> removed) {
-
         for (int i = 0, max = removed.size(); i < max; i++) {
             TC tc = removed.get(i);
             tc.widthProperty().removeListener(weakWidthListener);
@@ -923,14 +800,6 @@ public abstract class TableViewSkinBase<M, S, C extends Control, I extends Index
         Callback<ResizeFeaturesBase, Boolean> p = TableSkinUtils.columnResizePolicyProperty(this).get();
         boolean suppress = TableSkinUtils.isConstrainedResizePolicy(p);
         flow.setSuppressBreadthBar(suppress);
-    }
-
-    private void refreshView() {
-        markItemCountDirty();
-        Control c = getSkinnable();
-        if (c != null) {
-            c.requestLayout();
-        }
     }
 
     /**

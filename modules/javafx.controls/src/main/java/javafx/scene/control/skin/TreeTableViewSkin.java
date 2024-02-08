@@ -67,9 +67,6 @@ public class TreeTableViewSkin<T> extends TableViewSkinBase<T, TreeItem<T>, Tree
      *                                                                         *
      **************************************************************************/
 
-    TreeTableViewBackingList<T> tableBackingList;
-    ObjectProperty<ObservableList<TreeItem<T>>> tableBackingListProperty;
-
     private WeakReference<TreeItem<T>> weakRootRef;
     private final TreeTableViewBehavior<T>  behavior;
     private IDisconnectable rootListener;
@@ -130,8 +127,6 @@ public class TreeTableViewSkin<T> extends TableViewSkinBase<T, TreeItem<T>, Tree
         behavior.setOnFocusRightCell(() -> onFocusRightCell());
 
         lh.addChangeListener(control.rootProperty(), (ev) -> {
-            // fix for RT-37853
-            getSkinnable().edit(-1, null);
             setRoot(getSkinnable().getRoot());
         });
 
@@ -144,14 +139,6 @@ public class TreeTableViewSkin<T> extends TableViewSkinBase<T, TreeItem<T>, Tree
             }
             // update the item count in the flow and behavior instances
             updateItemCount();
-        });
-
-        lh.addChangeListener(control.rowFactoryProperty(), (ev) -> {
-            flow.recreateCells();
-        });
-
-        lh.addChangeListener(control.expandedItemCountProperty(), (ev) -> {
-            markItemCountDirty();
         });
 
         lh.addChangeListener(control.fixedCellSizeProperty(), (ev) -> {
@@ -169,8 +156,6 @@ public class TreeTableViewSkin<T> extends TableViewSkinBase<T, TreeItem<T>, Tree
     /** {@inheritDoc} */
     @Override
     public void dispose() {
-        flow.setCellFactory(null);
-
         if (rootListener != null) {
             rootListener.disconnect();
             rootListener = null;
@@ -324,7 +309,8 @@ public class TreeTableViewSkin<T> extends TableViewSkinBase<T, TreeItem<T>, Tree
             });
         }
 
-        updateItemCount();
+        markItemCountDirty();
+        getSkinnable().requestLayout();
     }
 
     /** {@inheritDoc} */
@@ -342,26 +328,6 @@ public class TreeTableViewSkin<T> extends TableViewSkinBase<T, TreeItem<T>, Tree
 
     /** {@inheritDoc} */
     @Override protected void updateItemCount() {
-        updatePlaceholderRegionVisibility();
-
-        tableBackingList.resetSize();
-
-        int oldCount = flow.getCellCount();
-        int newCount = getItemCount();
-
-        // if this is not called even when the count is the same, we get a
-        // memory leak in VirtualFlow.sheet.children. This can probably be
-        // optimised in the future when time permits.
-        flow.setCellCount(newCount);
-
-        if (newCount != oldCount) {
-            // The following line is (perhaps temporarily) disabled to
-            // resolve two issues: JDK-8155798 and JDK-8147483.
-            // A unit test exists in TreeTableViewTest to ensure that
-            // the performance issue covered in JDK-8147483 doesn't regress.
-            // requestRebuildCells();
-        } else {
-            needCellsReconfigured = true;
-        }
+        super.updateItemCount();
     }
 }

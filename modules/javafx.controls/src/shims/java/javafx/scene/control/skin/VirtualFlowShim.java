@@ -38,6 +38,10 @@ public class VirtualFlowShim<T extends IndexedCell> extends VirtualFlow<T> {
     public final ArrayLinkedList<T> cells = super.cells;
     public final ObservableList<Node> sheetChildren = super.sheetChildren;
 
+    public static ObservableList<Node> getSheetChildren(VirtualFlow virtualFlow) {
+        return virtualFlow.sheetChildren;
+    }
+
     @Override
     public double getViewportLength() {
         return super.getViewportLength();

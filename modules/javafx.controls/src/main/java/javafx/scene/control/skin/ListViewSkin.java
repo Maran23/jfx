@@ -108,10 +108,6 @@ public class ListViewSkin<T> extends VirtualContainerBase<ListView<T>, ListCell<
 
     private ObservableList<T> listViewItems;
 
-    private boolean needCellsRebuilt = true;
-    private boolean needCellsReconfigured = false;
-
-    private int itemCount = -1;
     private ListViewBehavior<T> behavior;
 
 
@@ -121,18 +117,6 @@ public class ListViewSkin<T> extends VirtualContainerBase<ListView<T>, ListCell<
      * Listeners                                                               *
      *                                                                         *
      **************************************************************************/
-
-    private MapChangeListener<Object, Object> propertiesMapListener = c -> {
-        if (! c.wasAdded()) return;
-        if (Properties.RECREATE.equals(c.getKey())) {
-            needCellsRebuilt = true;
-            getSkinnable().requestLayout();
-            getSkinnable().getProperties().remove(Properties.RECREATE);
-        }
-    };
-
-    private WeakMapChangeListener<Object, Object> weakPropertiesMapListener =
-            new WeakMapChangeListener<>(propertiesMapListener);
 
     private final ListChangeListener<T> listViewItemsListener = new ListChangeListener<>() {
         @Override public void onChanged(Change<? extends T> c) {
@@ -210,7 +194,6 @@ public class ListViewSkin<T> extends VirtualContainerBase<ListView<T>, ListCell<
 
         // init the VirtualFlow
         flow = getVirtualFlow();
-        flow.setId("virtual-flow");
         flow.setPannable(IS_PANNABLE);
         flow.setVertical(control.getOrientation() == Orientation.VERTICAL);
         flow.setCellFactory(flow -> createCell());
@@ -234,21 +217,12 @@ public class ListViewSkin<T> extends VirtualContainerBase<ListView<T>, ListCell<
 
         control.itemsProperty().addListener(weakItemsChangeListener);
 
-        final ObservableMap<Object, Object> properties = control.getProperties();
-        properties.remove(Properties.RECREATE);
-        properties.addListener(weakPropertiesMapListener);
-
         // Register listeners
         registerChangeListener(control.itemsProperty(), o -> updateListViewItems());
         registerChangeListener(control.orientationProperty(), o ->
             flow.setVertical(control.getOrientation() == Orientation.VERTICAL)
         );
         registerChangeListener(control.cellFactoryProperty(), o -> flow.recreateCells());
-        registerChangeListener(control.parentProperty(), o -> {
-            if (control.getParent() != null && control.isVisible()) {
-                control.requestLayout();
-            }
-        });
         registerChangeListener(control.placeholderProperty(), o -> updatePlaceholderRegionVisibility());
         registerChangeListener(control.fixedCellSizeProperty(), o ->
             flow.setFixedCellSize(control.getFixedCellSize())
@@ -267,7 +241,6 @@ public class ListViewSkin<T> extends VirtualContainerBase<ListView<T>, ListCell<
     @Override public void dispose() {
         if (getSkinnable() == null) return;
         // listener cleanup fixes side-effects (NPE on refresh, setItems, modifyItems)
-        getSkinnable().getProperties().removeListener(weakPropertiesMapListener);
         getSkinnable().itemsProperty().removeListener(weakItemsChangeListener);
         if (listViewItems != null) {
             listViewItems.removeListener(weakListViewItemsListener);
@@ -286,15 +259,6 @@ public class ListViewSkin<T> extends VirtualContainerBase<ListView<T>, ListCell<
                                             final double w, final double h) {
         super.layoutChildren(x, y, w, h);
 
-        if (needCellsRebuilt) {
-            flow.rebuildCells();
-        } else if (needCellsReconfigured) {
-            flow.reconfigureCells();
-        }
-
-        needCellsRebuilt = false;
-        needCellsReconfigured = false;
-
         if (getItemCount() == 0) {
             // show message overlay instead of empty listview
             if (placeholderRegion != null) {
@@ -308,8 +272,6 @@ public class ListViewSkin<T> extends VirtualContainerBase<ListView<T>, ListCell<
 
     /** {@inheritDoc} */
     @Override protected double computePrefWidth(double height, double topInset, double rightInset, double bottomInset, double leftInset) {
-        checkState();
-
         if (getItemCount() == 0) {
             if (placeholderRegion == null) {
                 updatePlaceholderRegionVisibility();
@@ -329,26 +291,13 @@ public class ListViewSkin<T> extends VirtualContainerBase<ListView<T>, ListCell<
 
     /** {@inheritDoc} */
     @Override protected int getItemCount() {
-        return itemCount;
+        return listViewItems == null ? 0 : listViewItems.size();
     }
 
     /** {@inheritDoc} */
     @Override protected void updateItemCount() {
-        if (flow == null) return;
-
-        int oldCount = itemCount;
-        int newCount = listViewItems == null ? 0 : listViewItems.size();
-
-        itemCount = newCount;
-
-        flow.setCellCount(newCount);
-
+        super.updateItemCount();
         updatePlaceholderRegionVisibility();
-        if (newCount == oldCount) {
-            needCellsReconfigured = true;
-        } else if (oldCount == 0) {
-            requestRebuildCells();
-        }
     }
 
     /** {@inheritDoc} */

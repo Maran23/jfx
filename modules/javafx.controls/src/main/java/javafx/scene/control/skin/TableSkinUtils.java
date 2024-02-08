@@ -184,22 +184,6 @@ class TableSkinUtils {
         return null;
     }
 
-    // returns a property representing the list of items in the control
-    public static <T> ObjectProperty<ObservableList<T>> itemsProperty(TableViewSkinBase<?,?,?,?,?> tableSkin) {
-        Object control = tableSkin.getSkinnable();
-        if (control instanceof TableView) {
-            return ((TableView)control).itemsProperty();
-        } else if (control instanceof TreeTableView && tableSkin instanceof TreeTableViewSkin) {
-            TreeTableViewSkin treeTableViewSkin = (TreeTableViewSkin)tableSkin;
-            if (treeTableViewSkin.tableBackingListProperty == null) {
-                treeTableViewSkin.tableBackingList = new TreeTableViewBackingList<>((TreeTableView)control);
-                treeTableViewSkin.tableBackingListProperty = new SimpleObjectProperty<>(treeTableViewSkin.tableBackingList);
-            }
-            return treeTableViewSkin.tableBackingListProperty;
-        }
-        return null;
-    }
-
     /** returns true if the column resize policy is constrained */
     public static boolean isConstrainedResizePolicy(Callback<? extends ResizeFeaturesBase, Boolean> x) {
         return (x instanceof ConstrainedColumnResizeBase);

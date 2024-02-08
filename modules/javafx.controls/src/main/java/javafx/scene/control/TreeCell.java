@@ -291,31 +291,33 @@ public class TreeCell<T> extends IndexedCell<T> {
                 weakTreeViewRef = null;
             }
 
-            TreeView<T> treeView = get();
-            if (treeView != null) {
-                sm = treeView.getSelectionModel();
+            TreeView<T> newTreeView = get();
+            if (newTreeView != null) {
+                sm = newTreeView.getSelectionModel();
                 if (sm != null) {
-                    // listening for changes to treeView.selectedIndex and IndexedCell.index,
+                    // listening for changes to newTreeView.selectedIndex and IndexedCell.index,
                     // to determine if this cell is selected
                     sm.getSelectedIndices().addListener(weakSelectedListener);
                 }
 
-                fm = treeView.getFocusModel();
+                fm = newTreeView.getFocusModel();
                 if (fm != null) {
                     // similar to above, but this time for focus
                     fm.focusedIndexProperty().addListener(weakFocusedListener);
                 }
 
-                treeView.editingItemProperty().addListener(weakEditingListener);
-                treeView.focusModelProperty().addListener(weakFocusModelPropertyListener);
-                treeView.selectionModelProperty().addListener(weakSelectionModelPropertyListener);
-                treeView.rootProperty().addListener(weakRootPropertyListener);
+                newTreeView.editingItemProperty().addListener(weakEditingListener);
+                newTreeView.focusModelProperty().addListener(weakFocusModelPropertyListener);
+                newTreeView.selectionModelProperty().addListener(weakSelectionModelPropertyListener);
+                newTreeView.rootProperty().addListener(weakRootPropertyListener);
 
-                weakTreeViewRef = new WeakReference<>(treeView);
+                weakTreeViewRef = new WeakReference<>(newTreeView);
             }
 
             updateItem(-1);
-            requestLayout();
+            updateSelection();
+            updateFocus();
+            updateEditing();
         }
 
         @Override

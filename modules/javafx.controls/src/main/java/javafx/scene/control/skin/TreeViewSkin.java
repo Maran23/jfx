@@ -97,14 +97,6 @@ public class TreeViewSkin<T> extends VirtualContainerBase<TreeView<T>, TreeCell<
      *                                                                         *
      **************************************************************************/
 
-    private MapChangeListener<Object, Object> propertiesMapListener = c -> {
-        if (! c.wasAdded()) return;
-        if (Properties.RECREATE.equals(c.getKey())) {
-            requestRebuildCells();
-            getSkinnable().getProperties().remove(Properties.RECREATE);
-        }
-    };
-
     private EventHandler<TreeModificationEvent<T>> rootListener = e -> {
         if (e.wasAdded() && e.wasRemoved() && e.getAddedSize() == e.getRemovedSize()) {
             // Fix for RT-14842, where the children of a TreeItem were changing,
@@ -180,10 +172,6 @@ public class TreeViewSkin<T> extends VirtualContainerBase<TreeView<T>, TreeCell<
         flow.getVbar().addEventFilter(MouseEvent.MOUSE_PRESSED, ml);
         flow.getHbar().addEventFilter(MouseEvent.MOUSE_PRESSED, ml);
 
-        final ObservableMap<Object, Object> properties = control.getProperties();
-        properties.remove(Properties.RECREATE);
-        properties.addListener(propertiesMapListener);
-
         // init the behavior 'closures'
         behavior.setOnFocusPreviousRow(() -> { onFocusPreviousCell(); });
         behavior.setOnFocusNextRow(() -> { onFocusNextCell(); });
@@ -223,7 +211,6 @@ public class TreeViewSkin<T> extends VirtualContainerBase<TreeView<T>, TreeCell<
     @Override public void dispose() {
         if (getSkinnable() == null) return;
 
-        getSkinnable().getProperties().removeListener(propertiesMapListener);
         setRoot(null);
         getChildren().remove(flow);
         super.dispose();
@@ -378,7 +365,8 @@ public class TreeViewSkin<T> extends VirtualContainerBase<TreeView<T>, TreeCell<
             getRoot().addEventHandler(TreeItem.<T>treeNotificationEvent(), weakRootListener);
         }
 
-        updateItemCount();
+        markItemCountDirty();
+        getSkinnable().requestLayout();
     }
 
     /** {@inheritDoc} */
@@ -388,21 +376,7 @@ public class TreeViewSkin<T> extends VirtualContainerBase<TreeView<T>, TreeCell<
 
     /** {@inheritDoc} */
     @Override protected void updateItemCount() {
-//        int oldCount = flow.getCellCount();
-        int newCount = getItemCount();
-
-        // if this is not called even when the count is the same, we get a
-        // memory leak in VirtualFlow.sheet.children. This can probably be
-        // optimised in the future when time permits.
-        requestRebuildCells();
-        flow.setCellCount(newCount);
-
-        // Ideally we would be more nuanced above, toggling a cheaper needs*
-        // field, but if we do we hit issues such as those identified in
-        // RT-27852, where the expended item count of the new root equals the
-        // EIC of the old root, which would lead to the visuals not updating
-        // properly.
-        getSkinnable().requestLayout();
+        super.updateItemCount();
     }
 
     // Note: This is a copy/paste of javafx.scene.control.cell.DefaultTreeCell,

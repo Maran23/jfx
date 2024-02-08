@@ -103,6 +103,10 @@ public class TreeTableRow<T> extends IndexedCell<T> {
         updateEditing();
     };
 
+    private final InvalidationListener rootPropertyListener = observable -> {
+        updateItem(-1);
+    };
+
     private final InvalidationListener leafListener = new InvalidationListener() {
         @Override public void invalidated(Observable valueModel) {
             // necessary to update the disclosure node in the skin when the
@@ -135,6 +139,9 @@ public class TreeTableRow<T> extends IndexedCell<T> {
             new WeakInvalidationListener(leafListener);
     private final WeakInvalidationListener weakTreeItemExpandedInvalidationListener =
             new WeakInvalidationListener(treeItemExpandedInvalidationListener);
+
+    private final WeakInvalidationListener weakRootPropertyListener =
+            new WeakInvalidationListener(rootPropertyListener);
 
 
 
@@ -234,32 +241,37 @@ public class TreeTableRow<T> extends IndexedCell<T> {
                     }
 
                     oldTreeTableView.editingCellProperty().removeListener(weakEditingListener);
+                    oldTreeTableView.rootProperty().removeListener(weakRootPropertyListener);
                 }
 
                 weakTreeTableViewRef = null;
             }
 
-            if (get() != null) {
-                sm = get().getSelectionModel();
+            TreeTableView<T> newTreeTableView = get();
+            if (newTreeTableView != null) {
+                sm = newTreeTableView.getSelectionModel();
                 if (sm != null) {
                     // listening for changes to treeView.selectedIndex and IndexedCell.index,
                     // to determine if this cell is selected
                     sm.getSelectedIndices().addListener(weakSelectedListener);
                 }
 
-                fm = get().getFocusModel();
+                fm = newTreeTableView.getFocusModel();
                 if (fm != null) {
                     // similar to above, but this time for focus
                     fm.focusedIndexProperty().addListener(weakFocusedListener);
                 }
 
-                get().editingCellProperty().addListener(weakEditingListener);
+                newTreeTableView.editingCellProperty().addListener(weakEditingListener);
+                newTreeTableView.rootProperty().addListener(weakRootPropertyListener);
 
-                weakTreeTableViewRef = new WeakReference<>(get());
+                weakTreeTableViewRef = new WeakReference<>(newTreeTableView);
             }
 
             updateItem(-1);
-            requestLayout();
+            updateSelection();
+            updateFocus();
+            updateEditing();
         }
     };
 

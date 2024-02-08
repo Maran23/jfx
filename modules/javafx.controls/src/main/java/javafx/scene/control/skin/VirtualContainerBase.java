@@ -25,6 +25,8 @@
 
 package javafx.scene.control.skin;
 
+import com.sun.javafx.scene.control.Properties;
+import javafx.collections.ObservableMap;
 import javafx.scene.control.Control;
 import javafx.scene.control.IndexedCell;
 import javafx.scene.control.ScrollToEvent;
@@ -50,6 +52,9 @@ public abstract class VirtualContainerBase<C extends Control, I extends IndexedC
      **************************************************************************/
 
     private boolean itemCountDirty;
+    protected boolean needCellsReconfigured = false;
+
+    protected int itemCount = -1;
 
     /**
      * The virtualized container which handles the layout and scrolling of
@@ -72,7 +77,8 @@ public abstract class VirtualContainerBase<C extends Control, I extends IndexedC
         super(control);
         flow = createVirtualFlow();
 
-        ListenerHelper.get(this).addEventHandler(control, ScrollToEvent.scrollToTopIndex(), (ev) -> {
+        ListenerHelper lh = ListenerHelper.get(this);
+        lh.addEventHandler(control, ScrollToEvent.scrollToTopIndex(), (ev) -> {
             // Fix for RT-24630: The row count in VirtualFlow was incorrect
             // (normally zero), so the scrollTo call was misbehaving.
             if (itemCountDirty) {
@@ -82,9 +88,28 @@ public abstract class VirtualContainerBase<C extends Control, I extends IndexedC
             }
             flow.scrollToTop(ev.getScrollTarget());
         });
+
+        final ObservableMap<Object, Object> properties = control.getProperties();
+        properties.remove(Properties.REFRESH);
+        properties.remove(Properties.RECREATE);
+        lh.addMapChangeListener(properties, (c) -> {
+            if (!c.wasAdded()) {
+                return;
+            }
+            if (Properties.REFRESH.equals(c.getKey())) {
+                markItemCountDirty();
+
+                getSkinnable().requestLayout();
+                getSkinnable().getProperties().remove(Properties.REFRESH);
+            } else if (Properties.RECREATE.equals(c.getKey())) {
+                requestRebuildCells();
+                markItemCountDirty();
+
+                getSkinnable().requestLayout();
+                getSkinnable().getProperties().remove(Properties.RECREATE);
+            }
+        });
     }
-
-
 
     /* *************************************************************************
      *                                                                         *
@@ -104,7 +129,28 @@ public abstract class VirtualContainerBase<C extends Control, I extends IndexedC
      * the control has resized, etc). This method should recalculate the item count and store that for future
      * use by the {@link #getItemCount} method.
      */
-    protected abstract void updateItemCount();
+    protected void updateItemCount() {
+        int oldCount = itemCount;
+        int newCount = getItemCount();
+
+        itemCount = newCount;
+
+        if (itemCount == 0) {
+            flow.getHbar().setValue(0.0);
+        }
+
+        // if this is not called even when the count is the same, we get a
+        // memory leak in VirtualFlow.sheet.children. This can probably be
+        // optimised in the future when time permits.
+        flow.setCellCount(newCount);
+
+        if (newCount == oldCount) {
+            needCellsReconfigured = true;
+        } else if (oldCount == 0) {
+            // see comments above, this is used as an alternative to flow.setDirtyCell(int)
+            requestRebuildCells();
+        }
+    }
 
 
 
@@ -158,6 +204,11 @@ public abstract class VirtualContainerBase<C extends Control, I extends IndexedC
     /** {@inheritDoc} */
     @Override protected void layoutChildren(double x, double y, double w, double h) {
         checkState();
+
+        if (needCellsReconfigured) {
+            flow.reconfigureCells();
+            needCellsReconfigured = false;
+        }
     }
 
     /* *************************************************************************

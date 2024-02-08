@@ -144,57 +144,6 @@ public class ListCell<T> extends IndexedCell<T> {
     };
 
     /**
-     * Listens to the items on the ListView. Whenever the items are changed in such a way that
-     * it impacts the index of this ListCell, then we must update the item.
-     */
-    private final ListChangeListener<T> itemsListener = c -> {
-        boolean doUpdate = false;
-        while (c.next()) {
-            // RT-35395: We only update the item in this cell if the current cell
-            // index is within the range of the change and certain changes to the
-            // list have occurred.
-            final int currentIndex = getIndex();
-            final ListView<T> lv = getListView();
-            final List<T> items = lv == null ? null : lv.getItems();
-            final int itemCount = items == null ? 0 : items.size();
-
-            final boolean indexAfterChangeFromIndex = currentIndex >= c.getFrom();
-            final boolean indexBeforeChangeToIndex = currentIndex < c.getTo() || currentIndex == itemCount;
-            final boolean indexInRange = indexAfterChangeFromIndex && indexBeforeChangeToIndex;
-
-            doUpdate = indexInRange || (indexAfterChangeFromIndex && !c.wasReplaced() && (c.wasRemoved() || c.wasAdded()));
-        }
-
-        if (doUpdate) {
-            updateItem(-1);
-        }
-    };
-
-    /**
-     * Listens to the items property on the ListView. Whenever the entire list is changed,
-     * we have to unhook the weakItemsListener and update the item.
-     */
-    private final InvalidationListener itemsPropertyListener = new InvalidationListener() {
-        private WeakReference<ObservableList<T>> weakItemsRef = new WeakReference<>(null);
-
-        @Override public void invalidated(Observable observable) {
-            ObservableList<T> oldItems = weakItemsRef.get();
-            if (oldItems != null) {
-                oldItems.removeListener(weakItemsListener);
-            }
-
-            ListView<T> listView = getListView();
-            ObservableList<T> items = listView == null ? null : listView.getItems();
-            weakItemsRef = new WeakReference<>(items);
-
-            if (items != null) {
-                items.addListener(weakItemsListener);
-            }
-            updateItem(-1);
-        }
-    };
-
-    /**
      * Listens to the focus model on the ListView. Whenever the focus model changes,
      * the focused property on the ListCell is updated
      */
@@ -224,8 +173,6 @@ public class ListCell<T> extends IndexedCell<T> {
     private final WeakInvalidationListener weakEditingListener = new WeakInvalidationListener(editingListener);
     private final WeakListChangeListener<Integer> weakSelectedListener = new WeakListChangeListener<>(selectedListener);
     private final WeakChangeListener<MultipleSelectionModel<T>> weakSelectionModelPropertyListener = new WeakChangeListener<>(selectionModelPropertyListener);
-    private final WeakListChangeListener<T> weakItemsListener = new WeakListChangeListener<>(itemsListener);
-    private final WeakInvalidationListener weakItemsPropertyListener = new WeakInvalidationListener(itemsPropertyListener);
     private final WeakInvalidationListener weakFocusedListener = new WeakInvalidationListener(focusedListener);
     private final WeakChangeListener<FocusModel<T>> weakFocusModelPropertyListener = new WeakChangeListener<>(focusModelPropertyListener);
 
@@ -246,12 +193,7 @@ public class ListCell<T> extends IndexedCell<T> {
 
         @Override protected void invalidated() {
             // Get the current and old list view references
-            final ListView<T> currentListView = get();
             final ListView<T> oldListView = weakListViewRef.get();
-
-            // If the currentListView is the same as the oldListView, then
-            // there is nothing to be done.
-            if (currentListView == oldListView) return;
 
             // If the old list view is not null, then we must unhook all its listeners
             if (oldListView != null) {
@@ -267,47 +209,35 @@ public class ListCell<T> extends IndexedCell<T> {
                     fm.focusedIndexProperty().removeListener(weakFocusedListener);
                 }
 
-                // If the old items isn't null, unhook the listener
-                final ObservableList<T> items = oldListView.getItems();
-                if (items != null) {
-                    items.removeListener(weakItemsListener);
-                }
-
                 // Remove the listeners of the properties on ListView
                 oldListView.editingIndexProperty().removeListener(weakEditingListener);
-                oldListView.itemsProperty().removeListener(weakItemsPropertyListener);
                 oldListView.focusModelProperty().removeListener(weakFocusModelPropertyListener);
                 oldListView.selectionModelProperty().removeListener(weakSelectionModelPropertyListener);
             }
 
-            if (currentListView != null) {
-                final MultipleSelectionModel<T> sm = currentListView.getSelectionModel();
+            ListView<T> newListView = get();
+            if (newListView != null) {
+                final MultipleSelectionModel<T> sm = newListView.getSelectionModel();
                 if (sm != null) {
                     sm.getSelectedIndices().addListener(weakSelectedListener);
                 }
 
-                final FocusModel<T> fm = currentListView.getFocusModel();
+                final FocusModel<T> fm = newListView.getFocusModel();
                 if (fm != null) {
                     fm.focusedIndexProperty().addListener(weakFocusedListener);
                 }
 
-                final ObservableList<T> items = currentListView.getItems();
-                if (items != null) {
-                    items.addListener(weakItemsListener);
-                }
+                newListView.editingIndexProperty().addListener(weakEditingListener);
+                newListView.focusModelProperty().addListener(weakFocusModelPropertyListener);
+                newListView.selectionModelProperty().addListener(weakSelectionModelPropertyListener);
 
-                currentListView.editingIndexProperty().addListener(weakEditingListener);
-                currentListView.itemsProperty().addListener(weakItemsPropertyListener);
-                currentListView.focusModelProperty().addListener(weakFocusModelPropertyListener);
-                currentListView.selectionModelProperty().addListener(weakSelectionModelPropertyListener);
-
-                weakListViewRef = new WeakReference<>(currentListView);
+                weakListViewRef = new WeakReference<>(newListView);
             }
 
             updateItem(-1);
             updateSelection();
             updateFocus();
-            requestLayout();
+            updateEditing();
         }
     };
     private void setListView(ListView<T> value) { listView.set(value); }
@@ -645,4 +575,3 @@ public class ListCell<T> extends IndexedCell<T> {
         }
     }
 }
-

@@ -25,11 +25,17 @@
 
 package javafx.scene.control.skin;
 
+import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.List;
 
+import javafx.beans.InvalidationListener;
+import javafx.beans.Observable;
+import javafx.beans.property.ObjectProperty;
 import javafx.collections.FXCollections;
+import javafx.collections.ListChangeListener;
 import javafx.collections.ObservableList;
+import javafx.collections.WeakListChangeListener;
 import javafx.event.EventHandler;
 import javafx.scene.AccessibleAction;
 import javafx.scene.AccessibleAttribute;
@@ -88,7 +94,20 @@ public class TableViewSkin<T> extends TableViewSkinBase<T, T, TableView<T>, Tabl
         flow.setFixedCellSize(control.getFixedCellSize());
         flow.setCellFactory(flow -> createCell());
 
+        final ObjectProperty<ObservableList<T>> itemsProperty = control.itemsProperty();
+        updateTableItems(null, itemsProperty.get());
+
         ListenerHelper lh = ListenerHelper.get(this);
+
+        lh.addInvalidationListener(itemsProperty, new InvalidationListener() {
+            private WeakReference<ObservableList<T>> weakItemsRef = new WeakReference<>(itemsProperty.get());
+
+            @Override public void invalidated(Observable observable) {
+                ObservableList<T> oldItems = weakItemsRef.get();
+                weakItemsRef = new WeakReference<>(itemsProperty.get());
+                updateTableItems(oldItems, itemsProperty.get());
+            }
+        });
 
         EventHandler<MouseEvent> ml = event -> {
             // This ensures that the table maintains the focus, even when the vbar
@@ -124,7 +143,58 @@ public class TableViewSkin<T> extends TableViewSkinBase<T, T, TableView<T>, Tabl
         updateItemCount();
     }
 
+    private ListChangeListener<T> rowCountListener = c -> {
+        while (c.next()) {
+            if (c.wasReplaced()) {
+                // RT-28397: Support for when an item is replaced with itself (but
+                // updated internal values that should be shown visually).
 
+                // The ListViewSkin equivalent code here was updated to use the
+                // flow.setDirtyCell(int) API, but it was left alone here, otherwise
+                // our unit test for RT-36220 fails as we do not handle the case
+                // where the TableCell gets updated (only the TableRow does).
+                // Ideally we would use the dirtyCell API:
+                //
+                // for (int i = c.getFrom(); i < c.getTo(); i++) {
+                //     flow.setCellDirty(i);
+                // }
+                itemCount = 0;
+                break;
+            } else if (c.getRemovedSize() == itemCount) {
+                // RT-22463: If the user clears out an items list then we
+                // should reset all cells (in particular their contained
+                // items) such that a subsequent addition to the list of
+                // an item which equals the old item (but is rendered
+                // differently) still displays as expected (i.e. with the
+                // updated display, not the old display).
+                itemCount = 0;
+                break;
+            }
+        }
+
+        // fix for RT-37853
+        getSkinnable().edit(-1, null);
+
+        markItemCountDirty();
+        getSkinnable().requestLayout();
+    };
+
+
+    private WeakListChangeListener<T> weakRowCountListener =
+            new WeakListChangeListener<>(rowCountListener);
+
+    private void updateTableItems(ObservableList<T> oldList, ObservableList<T> newList) {
+        if (oldList != null) {
+            oldList.removeListener(weakRowCountListener);
+        }
+
+        if (newList != null) {
+            newList.addListener(weakRowCountListener);
+        }
+
+        markItemCountDirty();
+        getSkinnable().requestLayout();
+    }
 
     /* *************************************************************************
      *                                                                         *
@@ -137,6 +207,10 @@ public class TableViewSkin<T> extends TableViewSkinBase<T, T, TableView<T>, Tabl
     public void dispose() {
         if (behavior != null) {
             behavior.dispose();
+        }
+
+        if (getSkinnable() != null) {
+            updateTableItems(getSkinnable().getItems(), null);
         }
 
         super.dispose();

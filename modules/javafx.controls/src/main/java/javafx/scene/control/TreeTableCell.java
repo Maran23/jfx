@@ -272,6 +272,10 @@ public class TreeTableCell<S,T> extends IndexedCell<T> {
                         weakTableViewRef = new WeakReference<>(newTreeTableView);
                     }
 
+                    updateItem(-1);
+                    updateSelection();
+                    updateFocus();
+                    updateEditing();
                     updateColumnIndex();
                 }
             };

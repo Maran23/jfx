@@ -806,6 +806,8 @@ public class TreeViewTest {
         root.setExpanded(true);
 
         final TreeView<RT_22463_Person> tree = new TreeView<>();
+        // Needed as TreeView is the only virtual control without a placeholder property.
+        tree.setPrefSize(0, 0);
 
         stageLoader = new StageLoader(tree);
 
@@ -821,8 +823,6 @@ public class TreeViewTest {
         root.getChildren().addAll(
                 new TreeItem<>(p1),
                 new TreeItem<>(p2));
-
-        Toolkit.getToolkit().firePulse();
 
         VirtualFlowTestUtils.assertCellTextEquals(tree, 1, "name1");
         VirtualFlowTestUtils.assertCellTextEquals(tree, 2, "name2");
@@ -840,8 +840,6 @@ public class TreeViewTest {
                 new TreeItem<>(new_p1),
                 new TreeItem<>(new_p2));
 
-        Toolkit.getToolkit().firePulse();
-
         VirtualFlowTestUtils.assertCellTextEquals(tree, 1, "updated name1");
         VirtualFlowTestUtils.assertCellTextEquals(tree, 2, "updated name2");
     }
@@ -853,6 +851,8 @@ public class TreeViewTest {
         root.setExpanded(true);
 
         final TreeView<RT_22463_Person> tree = new TreeView<>();
+        // Needed as TreeView is the only virtual control without a placeholder property.
+        tree.setPrefSize(0, 0);
 
         stageLoader = new StageLoader(tree);
 
@@ -868,8 +868,6 @@ public class TreeViewTest {
                 new TreeItem<>(p1),
                 new TreeItem<>(p2));
 
-        Toolkit.getToolkit().firePulse();
-
         VirtualFlowTestUtils.assertCellTextEquals(tree, 1, "name1");
         VirtualFlowTestUtils.assertCellTextEquals(tree, 2, "name2");
 
@@ -883,8 +881,6 @@ public class TreeViewTest {
         root.getChildren().setAll(
                 new TreeItem<>(newP1),
                 new TreeItem<>(newP2));
-
-        Toolkit.getToolkit().firePulse();
 
         VirtualFlowTestUtils.assertCellTextEquals(tree, 1, "updated name1");
         VirtualFlowTestUtils.assertCellTextEquals(tree, 2, "updated name2");

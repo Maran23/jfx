@@ -1742,6 +1742,8 @@ public class TreeTableViewTest {
         root.setExpanded(true);
 
         stageLoader = new StageLoader(table);
+        stageLoader.getStage().setWidth(200);
+        stageLoader.getStage().setHeight(200);
 
         table.setRoot(root);
 
