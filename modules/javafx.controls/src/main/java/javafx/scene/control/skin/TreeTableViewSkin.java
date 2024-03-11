@@ -25,11 +25,9 @@
 
 package javafx.scene.control.skin;
 
-import java.lang.ref.WeakReference;
-import java.util.ArrayList;
-import java.util.List;
-
-import javafx.beans.property.ObjectProperty;
+import com.sun.javafx.scene.control.IDisconnectable;
+import com.sun.javafx.scene.control.ListenerHelper;
+import com.sun.javafx.scene.control.behavior.TreeTableViewBehavior;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.event.EventHandler;
@@ -47,10 +45,9 @@ import javafx.scene.control.TreeTableView;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.StackPane;
 
-import com.sun.javafx.scene.control.IDisconnectable;
-import com.sun.javafx.scene.control.ListenerHelper;
-import com.sun.javafx.scene.control.TreeTableViewBackingList;
-import com.sun.javafx.scene.control.behavior.TreeTableViewBehavior;
+import java.lang.ref.WeakReference;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Default skin implementation for the {@link TreeTableView} control.
@@ -279,15 +276,7 @@ public class TreeTableViewSkin<T> extends TableViewSkinBase<T, TreeItem<T>, Tree
             // TODO I wonder if it might be possible for the root ref to get collected between these two lines
             // which would throw an NPE.  Perhaps we should simply use newRoot instance instead of getRoot().
             rootListener = ListenerHelper.get(this).addEventHandler(getRoot(), TreeItem.<T>treeNotificationEvent(), e -> {
-                if (e.wasAdded() && e.wasRemoved() && e.getAddedSize() == e.getRemovedSize()) {
-                    // Fix for RT-14842, where the children of a TreeItem were changing,
-                    // but because the overall item count was staying the same, there was
-                    // no event being fired to the skin to be informed that the items
-                    // had changed. So, here we just watch for the case where the number
-                    // of items being added is equal to the number of items being removed.
-                    markItemCountDirty();
-                    getSkinnable().requestLayout();
-                } else if (e.getEventType().equals(TreeItem.valueChangedEvent())) {
+                if (e.getEventType().equals(TreeItem.valueChangedEvent())) {
                     // Fix for RT-14971 and RT-15338.
                     requestRebuildCells();
                 } else {

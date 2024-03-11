@@ -45,6 +45,8 @@ import com.sun.javafx.scene.control.ListenerHelper;
  */
 public abstract class VirtualContainerBase<C extends Control, I extends IndexedCell> extends SkinBase<C> {
 
+    protected static final double GOLDEN_RATIO_MULTIPLIER = 0.618033987;
+
     /* *************************************************************************
      *                                                                         *
      * Private fields                                                          *

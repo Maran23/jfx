@@ -25,32 +25,35 @@
 
 package javafx.scene.control.skin;
 
-import com.sun.javafx.scene.control.Properties;
+import com.sun.javafx.scene.control.behavior.TreeViewBehavior;
 import javafx.beans.InvalidationListener;
 import javafx.beans.Observable;
 import javafx.beans.WeakInvalidationListener;
 import javafx.collections.FXCollections;
-import javafx.collections.MapChangeListener;
 import javafx.collections.ObservableList;
-import javafx.collections.ObservableMap;
 import javafx.event.EventHandler;
 import javafx.event.EventType;
 import javafx.event.WeakEventHandler;
 import javafx.scene.AccessibleAction;
 import javafx.scene.AccessibleAttribute;
 import javafx.scene.Node;
-import javafx.scene.control.*;
+import javafx.scene.control.Control;
+import javafx.scene.control.FocusModel;
+import javafx.scene.control.MultipleSelectionModel;
+import javafx.scene.control.SelectionModel;
+import javafx.scene.control.TreeCell;
+import javafx.scene.control.TreeItem;
 import javafx.scene.control.TreeItem.TreeModificationEvent;
+import javafx.scene.control.TreeView;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.StackPane;
+
 import java.lang.ref.WeakReference;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
 import java.util.ArrayList;
 import java.util.List;
-
-import com.sun.javafx.scene.control.behavior.TreeViewBehavior;
 
 /**
  * Default skin implementation for the {@link TreeView} control.
@@ -98,15 +101,7 @@ public class TreeViewSkin<T> extends VirtualContainerBase<TreeView<T>, TreeCell<
      **************************************************************************/
 
     private EventHandler<TreeModificationEvent<T>> rootListener = e -> {
-        if (e.wasAdded() && e.wasRemoved() && e.getAddedSize() == e.getRemovedSize()) {
-            // Fix for RT-14842, where the children of a TreeItem were changing,
-            // but because the overall item count was staying the same, there was
-            // no event being fired to the skin to be informed that the items
-            // had changed. So, here we just watch for the case where the number
-            // of items being added is equal to the number of items being removed.
-            markItemCountDirty();
-            getSkinnable().requestLayout();
-        } else if (e.getEventType().equals(TreeItem.valueChangedEvent())) {
+        if (e.getEventType().equals(TreeItem.valueChangedEvent())) {
             // Fix for RT-14971 and RT-15338.
             requestRebuildCells();
         } else {
@@ -123,8 +118,8 @@ public class TreeViewSkin<T> extends VirtualContainerBase<TreeView<T>, TreeCell<
             }
         }
 
-        // fix for RT-37853
-        getSkinnable().edit(null);
+        markItemCountDirty();
+        getSkinnable().requestLayout();
     };
 
     private WeakEventHandler<TreeModificationEvent<T>> weakRootListener;
@@ -222,7 +217,7 @@ public class TreeViewSkin<T> extends VirtualContainerBase<TreeView<T>, TreeCell<
 
     /** {@inheritDoc} */
     @Override protected double computePrefWidth(double height, double topInset, double rightInset, double bottomInset, double leftInset) {
-        return computePrefHeight(-1, topInset, rightInset, bottomInset, leftInset) * 0.618033987;
+        return computePrefHeight(-1, topInset, rightInset, bottomInset, leftInset) * GOLDEN_RATIO_MULTIPLIER;
     }
 
     /** {@inheritDoc} */

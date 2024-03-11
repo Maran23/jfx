@@ -25,21 +25,14 @@
 
 package javafx.scene.control.skin;
 
-import java.lang.ref.WeakReference;
-import java.security.AccessController;
-import java.security.PrivilegedAction;
-import java.util.List;
-
+import com.sun.javafx.scene.control.ListenerHelper;
+import com.sun.javafx.scene.control.skin.resources.ControlResources;
 import javafx.application.Platform;
 import javafx.beans.InvalidationListener;
-import javafx.beans.Observable;
 import javafx.beans.WeakInvalidationListener;
 import javafx.beans.property.ObjectProperty;
 import javafx.collections.FXCollections;
-import javafx.collections.ListChangeListener;
 import javafx.collections.ObservableList;
-import javafx.collections.ObservableMap;
-import javafx.collections.WeakListChangeListener;
 import javafx.geometry.HPos;
 import javafx.geometry.VPos;
 import javafx.scene.AccessibleAttribute;
@@ -61,9 +54,9 @@ import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
 import javafx.util.Callback;
 
-import com.sun.javafx.scene.control.ListenerHelper;
-import com.sun.javafx.scene.control.Properties;
-import com.sun.javafx.scene.control.skin.resources.ControlResources;
+import java.security.AccessController;
+import java.security.PrivilegedAction;
+import java.util.List;
 
 /**
  * TableViewSkinBase is the base skin class used by controls such as
@@ -94,8 +87,6 @@ public abstract class TableViewSkinBase<M, S, C extends Control, I extends Index
      * Static Fields                                                           *
      *                                                                         *
      **************************************************************************/
-
-    private static final double GOLDEN_RATIO_MULTIPLIER = 0.618033987;
 
     // RT-34744 : IS_PANNABLE will be false unless
     // javafx.scene.control.skin.TableViewSkin.pannable

@@ -25,10 +25,8 @@
 
 package javafx.scene.control.skin;
 
-import java.lang.ref.WeakReference;
-import java.util.ArrayList;
-import java.util.List;
-
+import com.sun.javafx.scene.control.ListenerHelper;
+import com.sun.javafx.scene.control.behavior.TableViewBehavior;
 import javafx.beans.InvalidationListener;
 import javafx.beans.Observable;
 import javafx.beans.property.ObjectProperty;
@@ -50,8 +48,9 @@ import javafx.scene.control.TableView;
 import javafx.scene.control.TableView.TableViewSelectionModel;
 import javafx.scene.input.MouseEvent;
 
-import com.sun.javafx.scene.control.ListenerHelper;
-import com.sun.javafx.scene.control.behavior.TableViewBehavior;
+import java.lang.ref.WeakReference;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Default skin implementation for the {@link TableView} control.
@@ -109,6 +108,8 @@ public class TableViewSkin<T> extends TableViewSkinBase<T, T, TableView<T>, Tabl
             }
         });
 
+        updateItemCount();
+
         EventHandler<MouseEvent> ml = event -> {
             // This ensures that the table maintains the focus, even when the vbar
             // and hbar controls inside the flow are clicked. Without this, the
@@ -139,8 +140,6 @@ public class TableViewSkin<T> extends TableViewSkinBase<T, T, TableView<T>, Tabl
         lh.addChangeListener(control.fixedCellSizeProperty(), (ev) -> {
             flow.setFixedCellSize(getSkinnable().getFixedCellSize());
         });
-
-        updateItemCount();
     }
 
     private ListChangeListener<T> rowCountListener = c -> {
@@ -148,17 +147,10 @@ public class TableViewSkin<T> extends TableViewSkinBase<T, T, TableView<T>, Tabl
             if (c.wasReplaced()) {
                 // RT-28397: Support for when an item is replaced with itself (but
                 // updated internal values that should be shown visually).
+                for (int i = c.getFrom(); i < c.getTo(); i++) {
+                    flow.setCellDirty(i);
+                }
 
-                // The ListViewSkin equivalent code here was updated to use the
-                // flow.setDirtyCell(int) API, but it was left alone here, otherwise
-                // our unit test for RT-36220 fails as we do not handle the case
-                // where the TableCell gets updated (only the TableRow does).
-                // Ideally we would use the dirtyCell API:
-                //
-                // for (int i = c.getFrom(); i < c.getTo(); i++) {
-                //     flow.setCellDirty(i);
-                // }
-                itemCount = 0;
                 break;
             } else if (c.getRemovedSize() == itemCount) {
                 // RT-22463: If the user clears out an items list then we

@@ -25,19 +25,14 @@
 
 package javafx.scene.control.skin;
 
-import java.util.ArrayList;
-import java.util.List;
-
-import com.sun.javafx.scene.control.Properties;
+import com.sun.javafx.scene.control.behavior.ListViewBehavior;
+import com.sun.javafx.scene.control.skin.resources.ControlResources;
 import javafx.beans.InvalidationListener;
 import javafx.beans.WeakInvalidationListener;
 import javafx.collections.FXCollections;
 import javafx.collections.ListChangeListener;
-import javafx.collections.MapChangeListener;
 import javafx.collections.ObservableList;
-import javafx.collections.ObservableMap;
 import javafx.collections.WeakListChangeListener;
-import javafx.collections.WeakMapChangeListener;
 import javafx.event.EventHandler;
 import javafx.geometry.Orientation;
 import javafx.scene.AccessibleAction;
@@ -51,14 +46,13 @@ import javafx.scene.control.ListCell;
 import javafx.scene.control.ListView;
 import javafx.scene.control.MultipleSelectionModel;
 import javafx.scene.control.SelectionModel;
-import com.sun.javafx.scene.control.behavior.ListViewBehavior;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.StackPane;
 
 import java.security.AccessController;
 import java.security.PrivilegedAction;
-
-import com.sun.javafx.scene.control.skin.resources.ControlResources;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Default skin implementation for the {@link ListView} control.
@@ -200,6 +194,8 @@ public class ListViewSkin<T> extends VirtualContainerBase<ListView<T>, ListCell<
         flow.setFixedCellSize(control.getFixedCellSize());
         getChildren().add(flow);
 
+        updateItemCount();
+
         EventHandler<MouseEvent> ml = event -> {
             // This ensures that the list maintains the focus, even when the vbar
             // and hbar controls inside the flow are clicked. Without this, the
@@ -212,8 +208,6 @@ public class ListViewSkin<T> extends VirtualContainerBase<ListView<T>, ListCell<
         };
         flow.getVbar().addEventFilter(MouseEvent.MOUSE_PRESSED, ml);
         flow.getHbar().addEventFilter(MouseEvent.MOUSE_PRESSED, ml);
-
-        updateItemCount();
 
         control.itemsProperty().addListener(weakItemsChangeListener);
 
@@ -281,7 +275,7 @@ public class ListViewSkin<T> extends VirtualContainerBase<ListView<T>, ListCell<
             }
         }
 
-        return computePrefHeight(-1, topInset, rightInset, bottomInset, leftInset) * 0.618033987;
+        return computePrefHeight(-1, topInset, rightInset, bottomInset, leftInset) * GOLDEN_RATIO_MULTIPLIER;
     }
 
     /** {@inheritDoc} */
