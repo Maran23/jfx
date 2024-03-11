@@ -164,7 +164,7 @@ public class TreeTableRow<T> extends IndexedCell<T> {
                     weakTreeItemExpandedInvalidationListener.invalidated(oldValue.expandedProperty());
                 }
             }
-    };
+        };
     private void setTreeItem(TreeItem<T> value) {
         treeItem.set(value);
     }

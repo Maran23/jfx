@@ -2175,10 +2175,10 @@ public class TableViewTest {
 
         table.getColumns().addAll(first);
 
+        stageLoader = new StageLoader(table);
+
         // get the cell at (0,0)
-        VirtualFlowTestUtils.BLOCK_STAGE_LOADER_DISPOSE = true;
         TableCell cell = (TableCell) VirtualFlowTestUtils.getCell(table, 0, 0);
-        VirtualFlowTestUtils.BLOCK_STAGE_LOADER_DISPOSE = false;
         assertTrue(cell.getSkin() instanceof TableCellSkin);
         assertNull(cell.getGraphic());
         assertEquals("John", cell.getText());
@@ -4435,7 +4435,7 @@ public class TableViewTest {
             table.getItems().add("" + i);
         }
 
-        StageLoader sl = new StageLoader(table);
+        stageLoader = new StageLoader(table);
 
         first.setOnEditCancel(editEvent -> rt_37853_cancelCount++);
         first.setOnEditCommit(editEvent -> rt_37853_commitCount++);
@@ -4449,8 +4449,6 @@ public class TableViewTest {
         table.getItems().clear();
         assertEquals(1, rt_37853_cancelCount);
         assertEquals(0, rt_37853_commitCount);
-
-        sl.dispose();
     }
 
 

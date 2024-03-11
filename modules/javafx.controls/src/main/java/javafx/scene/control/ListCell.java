@@ -654,4 +654,3 @@ public class ListCell<T> extends IndexedCell<T> {
         }
     }
 }
-

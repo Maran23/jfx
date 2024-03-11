@@ -299,6 +299,8 @@ public abstract class CellBehaviorBase<T extends Cell> extends BehaviorBase<T> {
             } else if (clickCount == 1) {
                 // cancel editing
                 edit(null);
+                // request focus back to cell container
+//                getCellContainer().requestFocus();
             } else if (clickCount == 2 && getNode().isEditable()) {
                 edit(getNode());
             }

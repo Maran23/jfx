@@ -2318,7 +2318,7 @@ public class TreeViewTest {
             treeView.getRoot().getChildren().add(new TreeItem<>("" + i));
         }
 
-        StageLoader sl = new StageLoader(treeView);
+        stageLoader = new StageLoader(treeView);
 
         treeView.setOnEditCancel(editEvent -> rt_37853_cancelCount++);
         treeView.setOnEditCommit(editEvent -> rt_37853_commitCount++);
@@ -2340,8 +2340,6 @@ public class TreeViewTest {
 
         assertEquals(1, rt_37853_cancelCount);
         assertEquals(0, rt_37853_commitCount);
-
-        sl.dispose();
     }
 
     @Test
@@ -2355,7 +2353,7 @@ public class TreeViewTest {
         TreeItem<String> item = new TreeItem<>("John");
         treeView.getRoot().getChildren().add(item);
 
-        StageLoader sl = new StageLoader(new Button(), treeView);
+        stageLoader = new StageLoader(new Button(), treeView);
         treeView.requestFocus();
         assertTrue(treeView.isFocused());
 
@@ -2384,8 +2382,6 @@ public class TreeViewTest {
 
         assertEquals("John", cell.getText());
         assertTrue(treeView.isFocused());
-
-        sl.dispose();
     }
 
     @Test
@@ -2399,7 +2395,7 @@ public class TreeViewTest {
         TreeItem<String> item = new TreeItem<>("John");
         treeView.getRoot().getChildren().add(item);
 
-        StageLoader sl = new StageLoader(new Button(), treeView);
+        stageLoader = new StageLoader(new Button(), treeView);
         treeView.requestFocus();
         assertTrue(treeView.isFocused());
 
@@ -2428,8 +2424,6 @@ public class TreeViewTest {
 
         assertEquals("Andrew", cell.getText());
         assertTrue(treeView.isFocused());
-
-        sl.dispose();
     }
 
     @Test public void test_rt_38787_remove_b() {
