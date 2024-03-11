@@ -307,25 +307,30 @@ public class TableRow<T> extends IndexedCell<T> {
     }
 
     private void updateEditing() {
-        if (getIndex() == -1) return;
+        TableView<T> tv = getTableView();
+        boolean editing = isEditing();
 
-        TableView<T> table = getTableView();
-        if (table == null) return;
+        if (getIndex() == -1 || tv == null) {
+            if (editing) {
+                stopEdit();
+            }
+            return;
+        };
 
-        TableView.TableViewSelectionModel<T> sm = table.getSelectionModel();
-        if (sm == null || sm.isCellSelectionEnabled()) return;
-
-        TablePosition<T,?> editCell = table.getEditingCell();
+        TablePosition<T,?> editCell = tv.getEditingCell();
         if (editCell != null && editCell.getTableColumn() != null) {
+            if (editing) {
+                stopEdit();
+            }
             return;
         }
 
-        boolean rowMatch = editCell == null ? false : editCell.getRow() == getIndex();
+        boolean match = editCell != null && editCell.getRow() == getIndex();
 
-        if (! isEditing() && rowMatch) {
+        if (match && !editing) {
             startEdit();
-        } else if (isEditing() && ! rowMatch) {
-            cancelEdit();
+        } else if (!match && editing) {
+            stopEdit();
         }
     }
 

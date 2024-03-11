@@ -403,7 +403,7 @@ public class ListCell<T> extends IndexedCell<T> {
         if (!isEditing()) return;
 
         indexAtStartEdit = getIndex();
-         // Inform the ListView of the edit starting.
+        // Inform the ListView of the edit starting.
         if (list != null) {
             list.fireEvent(new ListView.EditEvent<>(list,
                     ListView.<T>editStartEvent(),
@@ -583,32 +583,43 @@ public class ListCell<T> extends IndexedCell<T> {
     }
 
     private void updateEditing() {
-        final int index = getIndex();
         final ListView<T> list = getListView();
-        final int editIndex = list == null ? -1 : list.getEditingIndex();
+        final int index = getIndex();
         final boolean editing = isEditing();
-        final boolean match = (list != null) && (index != -1) && (index == editIndex);
+
+        if (index == -1 || list == null) {
+            if (editing) {
+                // JDK-8265210: must cancel edit if index changed to -1 by re-use
+                doCancelEdit();
+            }
+            return;
+        }
+
+        final int editIndex = list.getEditingIndex();
+        final boolean match = index == editIndex;
 
         if (match && !editing) {
             startEdit();
         } else if (!match && editing) {
-            // If my index is not the one being edited then I need to cancel
-            // the edit. The tricky thing here is that as part of this call
-            // I cannot end up calling list.edit(-1) the way that the standard
-            // cancelEdit method would do. Yet, I need to call cancelEdit
-            // so that subclasses which override cancelEdit can execute. So,
-            // I have to use a kind of hacky flag workaround.
-            try {
-                // try-finally to make certain that the flag is reliably reset to true
-                updateEditingIndex = false;
-                cancelEdit();
-            } finally {
-                updateEditingIndex = true;
-            }
+            doCancelEdit();
         }
     }
 
-
+    private void doCancelEdit() {
+        // If my index is not the one being edited then I need to cancel
+        // the edit. The tricky thing here is that as part of this call
+        // I cannot end up calling list.edit(-1) the way that the standard
+        // cancelEdit method would do. Yet, I need to call cancelEdit
+        // so that subclasses which override cancelEdit can execute. So,
+        // I have to use a kind of hacky flag workaround.
+        try {
+            // try-finally to make certain that the flag is reliably reset to true
+            updateEditingIndex = false;
+            cancelEdit();
+        } finally {
+            updateEditingIndex = true;
+        }
+    }
 
     /* *************************************************************************
      *                                                                         *
@@ -654,4 +665,3 @@ public class ListCell<T> extends IndexedCell<T> {
         }
     }
 }
-

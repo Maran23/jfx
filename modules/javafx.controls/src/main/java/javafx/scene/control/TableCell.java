@@ -569,20 +569,23 @@ public class TableCell<S,T> extends IndexedCell<T> {
     }
 
     private void updateEditing() {
-        if (getIndex() == -1 || getTableView() == null) {
+        TableView<S> tv = getTableView();
+        boolean editing = isEditing();
+
+        if (getIndex() == -1 || tv == null) {
             // JDK-8265206: must cancel edit if index changed to -1 by re-use
-            if (isEditing()) {
+            if (editing) {
                 doCancelEdit();
             }
             return;
         }
 
-        TablePosition<S,?> editCell = getTableView().getEditingCell();
+        TablePosition<S,?> editCell = tv.getEditingCell();
         boolean match = match(editCell);
 
-        if (match && ! isEditing()) {
+        if (match && !editing) {
             startEdit();
-        } else if (! match && isEditing()) {
+        } else if (!match && editing) {
             doCancelEdit();
         }
     }

@@ -4460,7 +4460,7 @@ public class TableViewTest {
             table.getItems().add("" + i);
         }
 
-        StageLoader sl = new StageLoader(table);
+        stageLoader = new StageLoader(table);
 
         first.setOnEditCancel(editEvent -> rt_37853_cancelCount++);
         first.setOnEditCommit(editEvent -> rt_37853_commitCount++);
@@ -4474,8 +4474,6 @@ public class TableViewTest {
         table.getItems().clear();
         assertEquals(1, rt_37853_cancelCount);
         assertEquals(0, rt_37853_commitCount);
-
-        sl.dispose();
     }
 
 

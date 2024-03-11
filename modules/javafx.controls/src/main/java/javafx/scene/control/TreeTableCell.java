@@ -346,10 +346,10 @@ public class TreeTableCell<S,T> extends IndexedCell<T> {
         editingCellAtStartEdit = new TreeTablePosition<>(table, getIndex(), column);
         if (column != null) {
             CellEditEvent<S, T> editEvent = new CellEditEvent<>(
-                table,
-                editingCellAtStartEdit,
-                TreeTableColumn.<S,T>editStartEvent(),
-                null
+                    table,
+                    editingCellAtStartEdit,
+                    TreeTableColumn.<S,T>editStartEvent(),
+                    null
             );
 
             Event.fireEvent(column, editEvent);
@@ -389,7 +389,7 @@ public class TreeTableCell<S,T> extends IndexedCell<T> {
                     editingCellAtStartEdit,
                     TreeTableColumn.<S,T>editCommitEvent(),
                     newValue
-                    );
+            );
 
             Event.fireEvent(getTableColumn(), editEvent);
         }
@@ -433,7 +433,7 @@ public class TreeTableCell<S,T> extends IndexedCell<T> {
                     editingCellAtStartEdit,
                     TreeTableColumn.<S,T>editCancelEvent(),
                     null
-                    );
+            );
 
             Event.fireEvent(getTableColumn(), editEvent);
         }
@@ -564,9 +564,11 @@ public class TreeTableCell<S,T> extends IndexedCell<T> {
 
     private void updateEditing() {
         final TreeTableView<S> tv = getTreeTableView();
+        boolean editing = isEditing();
+
         if (getIndex() == -1 || tv == null) {
             // JDK-8265206: must cancel edit if index changed to -1 by re-use
-            if (isEditing()) {
+            if (editing) {
                 doCancelEdit();
             }
             return;
@@ -575,9 +577,9 @@ public class TreeTableCell<S,T> extends IndexedCell<T> {
         TreeTablePosition<S,?> editCell = tv.getEditingCell();
         boolean match = match(editCell);
 
-        if (match && ! isEditing()) {
+        if (match && !editing) {
             startEdit();
-        } else if (! match && isEditing()) {
+        } else if (!match && editing) {
             doCancelEdit();
         }
     }
@@ -856,22 +858,22 @@ public class TreeTableCell<S,T> extends IndexedCell<T> {
     @Override
     public Object queryAccessibleAttribute(AccessibleAttribute attribute, Object... parameters) {
         switch (attribute) {
-        case ROW_INDEX:
-            return getIndex();
-        case COLUMN_INDEX:
-            return columnIndex;
-        case SELECTED:
-            if (isInCellSelectionMode()) {
-                return isSelected();
-            } else {
-                if (getTableRow() == null) {
-                    return null;
+            case ROW_INDEX:
+                return getIndex();
+            case COLUMN_INDEX:
+                return columnIndex;
+            case SELECTED:
+                if (isInCellSelectionMode()) {
+                    return isSelected();
                 } else {
-                    return getTableRow().isSelected();
+                    if (getTableRow() == null) {
+                        return null;
+                    } else {
+                        return getTableRow().isSelected();
+                    }
                 }
-            }
-        default:
-            return super.queryAccessibleAttribute(attribute, parameters);
+            default:
+                return super.queryAccessibleAttribute(attribute, parameters);
         }
     }
 

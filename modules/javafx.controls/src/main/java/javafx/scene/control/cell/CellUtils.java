@@ -242,6 +242,11 @@ class CellUtils {
 
     static <T> TextField createTextField(final Cell<T> cell, final StringConverter<T> converter) {
         final TextField textField = new TextField(getItemText(cell, converter));
+        textField.focusedProperty().addListener(inv -> {
+            if (!textField.isFocused() && cell.isEditing()) {
+                cell.stopEdit();
+            }
+        });
 
         // Use onAction here rather than onKeyReleased (with check for Enter),
         // as otherwise we encounter JDK-8096726
@@ -262,6 +267,14 @@ class CellUtils {
             }
         });
         return textField;
+    }
+
+    static <T> void stopEdit(Cell<T> cell, StringConverter<T> converter, String text) {
+        if (converter != null) {
+            cell.commitEdit(converter.fromString(text));
+        } else {
+            cell.cancelEdit();
+        }
     }
 
 

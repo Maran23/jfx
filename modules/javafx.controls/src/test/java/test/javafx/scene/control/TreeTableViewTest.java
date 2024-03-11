@@ -3261,16 +3261,14 @@ public class TreeTableViewTest {
         table.setShowRoot(false);
         root.getChildren().setAll(persons);
 
-        TreeTableColumn first = new TreeTableColumn("First Name");
+        TreeTableColumn<Person,String> first = new TreeTableColumn("First Name");
         first.setCellValueFactory(new TreeItemPropertyValueFactory<>("firstName"));
         first.setCellFactory(TextFieldTreeTableCell.forTreeTableColumn());
 
         EventHandler<TreeTableColumn.CellEditEvent<Person, String>> onEditCommit = first.getOnEditCommit();
-        first.setOnEditCommit(new EventHandler<TreeTableColumn.CellEditEvent<Person, String>>() {
-            @Override public void handle(TreeTableColumn.CellEditEvent<Person, String> event) {
-                test_rt_34685_commitCount++;
-                onEditCommit.handle(event);
-            }
+        first.setOnEditCommit(event -> {
+            test_rt_34685_commitCount++;
+            onEditCommit.handle(event);
         });
 
         table.getColumns().addAll(first);
@@ -4774,7 +4772,7 @@ public class TreeTableViewTest {
             treeTableView.getRoot().getChildren().add(new TreeItem<>("" + i));
         }
 
-        StageLoader sl = new StageLoader(treeTableView);
+        stageLoader = new StageLoader(treeTableView);
 
         first.setOnEditCancel(editEvent -> rt_37853_cancelCount++);
         first.setOnEditCommit(editEvent -> rt_37853_commitCount++);
@@ -4795,8 +4793,6 @@ public class TreeTableViewTest {
         }
         assertEquals(1, rt_37853_cancelCount);
         assertEquals(0, rt_37853_commitCount);
-
-        sl.dispose();
     }
 
 

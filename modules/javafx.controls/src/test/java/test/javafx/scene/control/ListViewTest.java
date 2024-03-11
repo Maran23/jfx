@@ -1270,7 +1270,7 @@ public class ListViewTest {
             listView.getItems().add("" + i);
         }
 
-        StageLoader sl = new StageLoader(listView);
+        stageLoader = new StageLoader(listView);
 
         listView.setOnEditCancel(editEvent -> rt_37853_cancelCount++);
         listView.setOnEditCommit(editEvent -> rt_37853_commitCount++);
@@ -1284,8 +1284,6 @@ public class ListViewTest {
         listView.getItems().clear();
         assertEquals(1, rt_37853_cancelCount);
         assertEquals(0, rt_37853_commitCount);
-
-        sl.dispose();
     }
 
     @Test

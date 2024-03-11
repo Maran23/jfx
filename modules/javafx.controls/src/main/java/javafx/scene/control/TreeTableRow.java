@@ -146,24 +146,24 @@ public class TreeTableRow<T> extends IndexedCell<T> {
 
     // --- TreeItem
     private ReadOnlyObjectWrapper<TreeItem<T>> treeItem =
-        new ReadOnlyObjectWrapper<>(this, "treeItem") {
+            new ReadOnlyObjectWrapper<>(this, "treeItem") {
 
-            TreeItem<T> oldValue = null;
+        TreeItem<T> oldValue = null;
 
-            @Override protected void invalidated() {
-                if (oldValue != null) {
-                    oldValue.expandedProperty().removeListener(weakTreeItemExpandedInvalidationListener);
-                }
-
-                oldValue = get();
-
-                if (oldValue != null) {
-                    oldExpanded = oldValue.isExpanded();
-                    oldValue.expandedProperty().addListener(weakTreeItemExpandedInvalidationListener);
-                    // fake an invalidation to ensure updated pseudo-class state
-                    weakTreeItemExpandedInvalidationListener.invalidated(oldValue.expandedProperty());
-                }
+        @Override protected void invalidated() {
+            if (oldValue != null) {
+                oldValue.expandedProperty().removeListener(weakTreeItemExpandedInvalidationListener);
             }
+
+            oldValue = get();
+
+            if (oldValue != null) {
+                oldExpanded = oldValue.isExpanded();
+                oldValue.expandedProperty().addListener(weakTreeItemExpandedInvalidationListener);
+                // fake an invalidation to ensure updated pseudo-class state
+                weakTreeItemExpandedInvalidationListener.invalidated(oldValue.expandedProperty());
+            }
+        }
     };
     private void setTreeItem(TreeItem<T> value) {
         treeItem.set(value);
@@ -313,7 +313,7 @@ public class TreeTableRow<T> extends IndexedCell<T> {
         // by calling super.startEdit().
         super.startEdit();
 
-         // Inform the TreeView of the edit starting.
+        // Inform the TreeView of the edit starting.
         if (treeTable != null) {
             treeTable.fireEvent(new TreeTableView.EditEvent<>(treeTable,
                     TreeTableView.<T>editStartEvent(),
@@ -325,7 +325,7 @@ public class TreeTableRow<T> extends IndexedCell<T> {
         }
     }
 
-     /** {@inheritDoc} */
+    /** {@inheritDoc} */
     @Override public void commitEdit(T newValue) {
         if (! isEditing()) return;
         final TreeItem<T> treeItem = getTreeItem();
@@ -468,21 +468,32 @@ public class TreeTableRow<T> extends IndexedCell<T> {
     }
 
     private void updateEditing() {
-        if (getIndex() == -1 || getTreeTableView() == null || getTreeItem() == null) return;
+        TreeTableView<T> tv = getTreeTableView();
+        boolean editing = isEditing();
 
-        final TreeTablePosition<T,?> editingCell = getTreeTableView().getEditingCell();
+        if (getIndex() == -1 || tv == null || getTreeItem() == null) {
+            if (editing) {
+                stopEdit();
+            }
+            return;
+        }
+
+        final TreeTablePosition<T,?> editingCell = tv.getEditingCell();
         if (editingCell != null && editingCell.getTableColumn() != null) {
+            if (editing) {
+                stopEdit();
+            }
             return;
         }
 
         final TreeItem<T> editItem = editingCell == null ? null : editingCell.getTreeItem();
-        if (! isEditing() && getTreeItem().equals(editItem)) {
+        boolean match = getTreeItem().equals(editItem);
+        if (match && !editing) {
             startEdit();
-        } else if (isEditing() && ! getTreeItem().equals(editItem)) {
-            cancelEdit();
+        } else if (!match && editing) {
+            stopEdit();
         }
     }
-
 
 
     /* *************************************************************************

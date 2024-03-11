@@ -584,32 +584,31 @@ public class TreeCell<T> extends IndexedCell<T> {
 
     private boolean updateEditingIndex = true;
     private void updateEditing() {
-        final int index = getIndex();
         final TreeView<T> tree = getTreeView();
         final TreeItem<T> treeItem = getTreeItem();
-        final TreeItem<T> editItem = tree == null ? null : tree.getEditingItem();
         final boolean editing = isEditing();
 
-        if (index == -1 || tree == null || treeItem == null) {
+        if (getIndex() == -1 || tree == null || treeItem == null) {
             if (editing) {
                 // JDK-8265210: must cancel edit if index changed to -1 by re-use
-                doCancelEditing();
+                doCancelEdit();
             }
             return;
         }
 
+        final TreeItem<T> editItem = tree.getEditingItem();
         final boolean match = treeItem.equals(editItem);
 
         // If my tree item is the item being edited and I'm not currently in
         // the edit mode, then I need to enter the edit mode
         if (match && !editing) {
             startEdit();
-        } else if (! match && editing) {
-            doCancelEditing();
+        } else if (!match && editing) {
+            doCancelEdit();
         }
     }
 
-    private void doCancelEditing() {
+    private void doCancelEdit() {
         // If my tree item is not the one being edited then I need to cancel
         // the edit. The tricky thing here is that as part of this call
         // I cannot end up calling tree.edit(null) the way that the standard
