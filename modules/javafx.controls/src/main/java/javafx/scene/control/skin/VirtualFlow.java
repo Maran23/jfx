@@ -1909,7 +1909,7 @@ public class VirtualFlow<T extends IndexedCell> extends Region {
     private final void setViewportBreadth(double value) {
         this.viewportBreadth = value;
     }
-    private final double getViewportBreadth() {
+    final double getViewportBreadth() {
         return viewportBreadth;
     }
 

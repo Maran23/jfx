@@ -642,6 +642,7 @@ public class SkinCleanupTest {
     @Test
     public void testTableRowVirtualFlowWidthListenerReplaceSkin() {
         TableView<Person> tableView = createPersonTable(false);
+        tableView.setFixedCellSize(24);
         showControl(tableView, true);
         VirtualFlow<?> flow = getVirtualFlow(tableView);
         TableRow<?> tableRow = (TableRow<?>) getCell(tableView, 1);
@@ -658,6 +659,7 @@ public class SkinCleanupTest {
     @Test
     public void testTableRowVirtualFlowWidthListener() {
         TableView<Person> tableView = createPersonTable(false);
+        tableView.setFixedCellSize(24);
         showControl(tableView, true);
         VirtualFlow<?> flow = getVirtualFlow(tableView);
         TableRow<?> tableRow = (TableRow<?>) getCell(tableView, 1);
@@ -1726,5 +1728,3 @@ public class SkinCleanupTest {
     }
 
 }
-
-

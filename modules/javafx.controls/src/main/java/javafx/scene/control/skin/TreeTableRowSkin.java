@@ -130,27 +130,13 @@ public class TreeTableRowSkin<T> extends TableRowSkinBase<TreeItem<T>, TreeTable
                 }
             });
 
-            DoubleProperty fixedCellSizeProperty = getTreeTableView().fixedCellSizeProperty();
-            if (fixedCellSizeProperty != null) {
-                registerChangeListener(fixedCellSizeProperty, (x) -> {
-                    updateCachedFixedSize();
-                });
-                updateCachedFixedSize();
-
-                // JDK-8144500:
-                // When in fixed cell size mode, we must listen to the width of the virtual flow, so
-                // that when it changes, we can appropriately add / remove cells that may or may not
-                // be required (because we remove all cells that are not visible).
+            registerChangeListener(getTreeTableView().fixedCellSizeProperty(), e -> {
                 VirtualFlow<TreeTableRow<T>> virtualFlow = getVirtualFlow();
-                if (virtualFlow != null) {
-                    registerChangeListener(getVirtualFlow().widthProperty(), (x) -> {
-                        if (getSkinnable() != null) {
-                            TreeTableView<T> t = getSkinnable().getTreeTableView();
-                            t.requestLayout();
-                        }
-                    });
-                }
-            }
+                unregisterChangeListeners(virtualFlow.widthProperty());
+
+                updateCachedFixedSize();
+            });
+            updateCachedFixedSize();
         }
     }
 
@@ -160,6 +146,11 @@ public class TreeTableRowSkin<T> extends TableRowSkinBase<TreeItem<T>, TreeTable
             if (t != null) {
                 fixedCellSize = t.getFixedCellSize();
                 fixedCellSizeEnabled = fixedCellSize > 0.0;
+
+                if (fixedCellSizeEnabled) {
+                    VirtualFlow<TreeTableRow<T>> virtualFlow = getTableViewSkin().getVirtualFlow();
+                    registerChangeListener(virtualFlow.widthProperty(), ev -> getSkinnable().requestLayout());
+                }
             }
         }
     }

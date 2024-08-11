@@ -31,6 +31,8 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.lang.ref.WeakReference;
+
+import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.geometry.Insets;
@@ -326,6 +328,28 @@ public class TreeTableRowSkinTest {
     @Test
     public void invisibleColumnsShouldRemoveCorrespondingCellsInRow() {
         invisibleColumnsShouldRemoveCorrespondingCellsInRowImpl();
+    }
+
+    /**
+     * The {@link TreeTableRowSkin} should add new cells after new columns are added.
+     * See: JDK-8321970
+     */
+    @Test
+    public void cellsShouldBeAddedInRowFixedCellSize() {
+        treeTableView.setPrefWidth(800);
+        treeTableView.setFixedCellSize(24);
+
+        TreeTableColumn<Person, String> otherColumn = new TreeTableColumn<>("other");
+        otherColumn.setPrefWidth(100);
+        otherColumn.setCellValueFactory(value -> new SimpleStringProperty("other"));
+        treeTableView.getColumns().add(otherColumn);
+
+        Toolkit.getToolkit().firePulse();
+        assertEquals(5, treeTableView.getColumns().size());
+
+        Toolkit.getToolkit().firePulse();
+        IndexedCell<?> row = VirtualFlowTestUtils.getCell(treeTableView, 1);
+        assertEquals(5, row.getChildrenUnmodifiable().stream().filter(TreeTableCell.class::isInstance).count());
     }
 
     /** TreeTableView.refresh() must release all discarded cells JDK-8307538 */

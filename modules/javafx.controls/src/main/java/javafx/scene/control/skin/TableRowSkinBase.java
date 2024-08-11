@@ -36,7 +36,6 @@ import javafx.beans.property.ObjectProperty;
 import javafx.collections.ObservableList;
 import javafx.css.StyleOrigin;
 import javafx.css.StyleableObjectProperty;
-import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.Parent;
@@ -349,13 +348,12 @@ public abstract class TableRowSkinBase<T,
                 height = h;
             }
 
+            width = tableColumn.getWidth();
+
             if (isVisible) {
-                if (fixedCellSizeEnabled && tableCell.getParent() == null) {
+                if (tableCell.getParent() == null) {
                     getChildren().add(tableCell);
                 }
-                // Note: prefWidth() has to be called only after the tableCell is added to the tableRow, if it wasn't
-                // already. Otherwise, it might not have its skin yet, and its pref width is therefore 0.
-                width = tableCell.prefWidth(height);
 
                 // Added for RT-32700, and then updated for RT-34074.
                 // We change the alignment from CENTER_LEFT to TOP_LEFT if the
@@ -427,8 +425,7 @@ public abstract class TableRowSkinBase<T,
                 // This does not appear to impact performance...
                 tableCell.requestLayout();
             } else {
-                width = tableCell.prefWidth(height);
-                if (fixedCellSizeEnabled) {
+                if (tableCell.getParent() != null) {
                     // we only add/remove to the scenegraph if the fixed cell
                     // length support is enabled - otherwise we keep all
                     // TableCells in the scenegraph
@@ -680,8 +677,7 @@ public abstract class TableRowSkinBase<T,
         double end = start + col.getWidth();
 
         // determine the width of the table
-        final Insets padding = getSkinnable().getPadding();
-        double headerWidth = getSkinnable().getWidth() - padding.getLeft() + padding.getRight();
+        double headerWidth = virtualFlow == null ? 0 : virtualFlow.getViewportBreadth();
 
         return (start >= scrollX || end > scrollX) && (start < (headerWidth + scrollX) || end <= (headerWidth + scrollX));
     }
