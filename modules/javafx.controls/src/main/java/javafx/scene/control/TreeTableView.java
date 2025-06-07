@@ -2088,7 +2088,7 @@ public class TreeTableView<S> extends Control {
      * @since JavaFX 8u60
      */
     public void refresh() {
-        getProperties().put(Properties.RECREATE, Boolean.TRUE);
+        getProperties().put(Properties.REBUILD, Boolean.TRUE);
     }
 
 
