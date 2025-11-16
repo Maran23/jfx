@@ -1,3 +1,5 @@
+import com.sun.javafx.gradle.CompileTarget
+
 /*
  * Copyright (c) 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
@@ -46,10 +48,74 @@ defineProperty("MAVEN_VERSION", IS_MAVEN_PUBLISH ? (ext.IS_MILESTONE_FCS ? proje
 logger.quiet("MAVEN_PUBLISH: $MAVEN_PUBLISH")
 logger.quiet("MAVEN_VERSION: $MAVEN_VERSION")
 
-ext.addMavenPublication = { Project project, List<String> projectDependencies ->
+ext.configureMavenPublication = { List<Project> projects, CompileTarget t, Task dependingTask ->
     if (!IS_MAVEN_PUBLISH) {
         return
     }
+
+    def targetProperties = project.ext[t.upper]
+    def platformPrefix = targetProperties.platformPrefix
+
+    // Maven Publications
+    def publicationDirName = "${platformPrefix}publications"
+    def publicationDir = "${rootProject.layout.buildDirectory.get()}/${publicationDirName}"
+
+    projects.each { Project project ->
+        def moduleName = project.ext.moduleName
+        def buildDir = project.layout.buildDirectory.get()
+        def sourceDir = project.sourceSets.findByName("main").allSource
+
+        def dstModularJarDir="${publicationDir}"
+        def srcClassesDir = "${buildDir}/${platformPrefix}module-classes"
+        def srcLibsDir = "${buildDir}/${platformPrefix}module-lib"
+
+        def modularEmptyPublicationJarName = "${moduleName}.jar"
+        def modularEmptyPublicationJarTask = project.task("moduleEmptyPublicationJar${t.capital}", type: Jar) {
+            destinationDirectory = file("${dstModularJarDir}")
+            archiveFileName = modularEmptyPublicationJarName
+            manifest {
+                attributes(
+                        'Automatic-Module-Name':"${moduleName}Empty"
+                )
+            }
+        }
+
+        def modularPublicationJarName = "${moduleName}-${t.name}.jar"
+        def modularPublicationJarTask = project.task("modularPublicationJar${t.capital}", type: Jar, dependsOn: modularEmptyPublicationJarTask) {
+            destinationDirectory = file("${dstModularJarDir}")
+            archiveFileName = modularPublicationJarName
+            from srcLibsDir
+            from srcClassesDir
+        }
+
+        def modularPublicationSourceJarTask = project.task("modulePublicationSourcesJar${t.capital}", type: Jar, dependsOn: modularPublicationJarTask) {
+            archiveClassifier.set('sources')
+            from sourceDir
+        }
+
+        dependingTask.dependsOn(modularPublicationSourceJarTask)
+    }
+
+    addMavenPublication(project.project(":base"), [])
+    addMavenPublication(project.project(":graphic"), [ 'base' ])
+    addMavenPublication(project.project(":controls"), [ 'graphics' ])
+    addMavenPublication(project.project(":fxml"), [ 'controls' ])
+    addMavenPublication(project.project(":media"), [ 'graphics' ])
+
+    if (ext.COMPILE_SWING) {
+        addMavenPublication(project.project(":swing"), [ 'graphics' ])
+    }
+
+    addMavenPublication(project.project("jsobject"), [])
+    addMavenPublication(project.project(":web"), [ 'controls', 'media', 'jsobject' ])
+
+    // Incubator modules
+    addMavenPublication(project.project(":incubator.input"), [ 'controls' ])
+    addMavenPublication(project.project(":incubator.richtext"), [ 'controls', 'incubator.input' ])
+}
+
+void addMavenPublication(Project project, List<String> projectDependencies) {
+    println "maven: " + project
 
     if (!project.hasProperty("moduleName")) {
         fail("Project ${project} has no module name")
@@ -117,6 +183,9 @@ ext.addMavenPublication = { Project project, List<String> projectDependencies ->
                         artifact project.tasks."moduleEmptyPublicationJar$t.capital"
                         artifact project.tasks."modularPublicationJar$t.capital" {
                             archiveClassifier.set("$t.name")
+                        }
+                        artifact project.tasks."modulePublicationSourcesJar$t.capital" {
+                            archiveClassifier.set("sources")
                         }
                     }
 
