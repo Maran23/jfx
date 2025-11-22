@@ -211,7 +211,7 @@ def winSdkDllDir = WINDOWS_VS_WINSDKDLLINSTALLDIR != "" ?
 def windowsCRTVer = System.getenv("WINDOWS_CRT_VER") ?: WINDOWS_CRT_VER
 
 def vsDllPath = cygpath("${msvcRedstDir}/Microsoft.VC${windowsCRTVer}.CRT")
-if (file(vsDllPath).exists()) {
+if (false) {
     ext.WIN.VSDLLNames = [
         "msvcp140.dll",
         "msvcp140_1.dll",
@@ -232,7 +232,7 @@ else {
 }
 
 def WinSDKDLLsPath = cygpath("${winSdkDllDir}")
-if (file(WinSDKDLLsPath).exists()) {
+if (false) {
     ext.WIN.WinSDKDLLNames = [
         "api-ms-win-core-console-l1-1-0.dll",
         "api-ms-win-core-console-l1-2-0.dll",

@@ -5811,8 +5811,8 @@ compileTargets { t ->
             }
 
             // Copy javafx-swt.jar to the javafx-graphics module lib dir
-            from "${swtProject.buildDir}/libs/javafx-swt.jar"
-            into "${graphicsProject.buildDir}/${platformPrefix}module-lib"
+//            from "${swtProject.buildDir}/libs/javafx-swt.jar"
+//            into "${graphicsProject.buildDir}/${platformPrefix}module-lib"
         }
         graphicsProject.tasks.getByName("copyNativeFilesStandalone$t.capital").dependsOn(buildModuleSWT)
         graphicsProject.tasks.getByName("copyLibFilesStandalone$t.capital").dependsOn(buildModuleSWT)
