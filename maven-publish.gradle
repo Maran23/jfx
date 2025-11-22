@@ -82,6 +82,7 @@ ext.configureMavenPublication = { List<Project> projects, CompileTarget t, Task 
     projects.each { Project project ->
         def moduleName = project.ext.moduleName
         def buildDir = project.layout.buildDirectory.get()
+        def sourceDir = project.sourceSets.main.allJava
 
         def dstModularJarDir="${publicationDir}"
         def srcClassesDir = "${buildDir}/${platformPrefix}module-classes"
@@ -101,13 +102,23 @@ ext.configureMavenPublication = { List<Project> projects, CompileTarget t, Task 
         }
 
         def modularPublicationJarName = "${moduleName}-${t.name}.jar"
-        project.tasks.register("modularPublicationJar${t.capital}", Jar) {
+        def modularPublicationJarTask = project.tasks.register("modularPublicationJar${t.capital}", Jar) {
             dependsOn modularEmptyPublicationJarTask
 
             destinationDirectory = file("${dstModularJarDir}")
             archiveFileName = modularPublicationJarName
             from srcLibsDir
             from srcClassesDir
+        }
+
+
+        def modularPublicationSourcesJarName = "${moduleName}-sources.jar"
+        project.tasks.register("modulePublicationSourcesJar${t.capital}", Jar) {
+            dependsOn modularPublicationJarTask
+
+            destinationDirectory = file("${dstModularJarDir}")
+            archiveFileName = modularPublicationSourcesJarName
+            from sourceDir
         }
     }
 }
@@ -179,6 +190,9 @@ void addMavenPublication(Project project, List<Project> projectDependencies) {
                         artifact project.tasks."moduleEmptyPublicationJar$t.capital"
                         artifact project.tasks."modularPublicationJar$t.capital" {
                             archiveClassifier.set("$t.name")
+                        }
+                        artifact project.tasks."modulePublicationSourcesJar$t.capital" {
+                            archiveClassifier.set("sources")
                         }
                     }
 
