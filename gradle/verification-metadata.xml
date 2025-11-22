@@ -5,6 +5,7 @@
       <verify-signatures>false</verify-signatures>
       <trusted-artifacts>
          <trust file=".*-sources[.]jar" regex="true"/>
+         <trust file=".*groovy.*" regex="true"/>
       </trusted-artifacts>
    </configuration>
    <components>

@@ -1,0 +1,136 @@
+#
+# Builds a *static* JavaFX SDK for Windows x64 and publishes it as a release asset.
+#
+# The resulting bundle is consumed by GraalVM native-image builds, which link
+# JavaFX statically via /WHOLEARCHIVE:glass.lib and friends. Those .lib files just have to be copied
+# into <graalvm>\lib\static\windows-amd64; the JavaFX jars come from Maven Central as usual.
+#
+# Bundle layout (javafx-static-win-x64.zip):
+#   static-libs/  glass.lib prism_common.lib prism_d3d.lib prism_sw.lib javafx_font.lib
+#                 javafx_iio.lib decora_sse.lib
+#   BUNDLE-INFO.txt   (records the JavaFX version the libs were built from)
+#
+name: Static Windows SDK
+
+on:
+  push:
+    branches: [ release-optimized ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  static_win_sdk:
+    name: Static SDK (Windows x64)
+    # Keep in sync with the native-image job that consumes this bundle, so the JavaFX .lib files and
+    # the final link step use the same MSVC toolset. windows-latest is Server 2025 with VS 2026.
+    runs-on: "windows-2022"
+    timeout-minutes: 60
+
+    env:
+      BOOT_JDK_VERSION: "25.0.1"
+      BOOT_JDK_FILENAME: "jdk-25.0.1_windows-x64_bin.zip"
+      BOOT_JDK_URL: "https://download.oracle.com/java/25/archive/jdk-25.0.1_windows-x64_bin.zip"
+      ANT_DIR: "apache-ant-1.10.5"
+      ANT_FILENAME: "apache-ant-1.10.5.tar.gz"
+      ANT_URL: "https://archive.apache.org/dist/ant/binaries/apache-ant-1.10.5-bin.tar.gz"
+      RELEASE_TAG: static-win-x64-latest
+
+    steps:
+      - name: Checkout the source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Download boot JDK
+        run: |
+          mkdir -p "$HOME\bootjdk"
+          & curl -L "$env:BOOT_JDK_URL" -o "$HOME/bootjdk/$env:BOOT_JDK_FILENAME"
+          tar -xf "$HOME/bootjdk/$env:BOOT_JDK_FILENAME" -C "$HOME/bootjdk"
+
+      - name: Restore cygwin packages from cache
+        id: cygwin
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/cygwin/packages
+          key: cygwin-packages-${{ runner.os }}-v1
+
+      - name: Install cygwin
+        run: |
+          New-Item -Force -ItemType directory -Path "$HOME\cygwin"
+          & curl -L "https://www.cygwin.com/setup-x86_64.exe" -o "$HOME/cygwin/setup-x86_64.exe"
+          Start-Process -FilePath "$HOME\cygwin\setup-x86_64.exe" -ArgumentList "--quiet-mode --packages make,zip,unzip --root $HOME\cygwin\cygwin64 --local-package-dir $HOME\cygwin\packages --site http://mirrors.kernel.org/sourceware/cygwin --no-desktop --no-shortcuts --no-startmenu --no-admin" -Wait -NoNewWindow
+
+      - name: Install dependencies
+        run: |
+          mkdir -p "$HOME\build-tools"
+          & curl -L "$env:ANT_URL" -o "$HOME/build-tools/$env:ANT_FILENAME"
+          tar -zxf "$HOME/build-tools/$env:ANT_FILENAME" -C "$HOME/build-tools"
+
+      - name: Setup environment
+        run: |
+          $env:Path = "$HOME\cygwin\cygwin64\bin;$env:Path" ;
+          $env:JAVA_HOME = "$HOME\bootjdk\jdk-$env:BOOT_JDK_VERSION" ;
+          $env:ANT_HOME = "${HOME}\build-tools\$env:ANT_DIR"
+          $env:Path = "$env:JAVA_HOME\bin;$env:ANT_HOME\bin;$env:Path" ;
+          which java
+          java -version
+          which ant
+          ant -version
+
+          # Save JAVA_HOME, ANT_HOME, and Path (renamed to THE_PATH) in env variables
+          echo "JAVA_HOME=$env:JAVA_HOME" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          echo "ANT_HOME=$env:ANT_HOME" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          echo "THE_PATH=$env:Path" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Build static SDK
+        run: |
+          $env:Path = "$env:THE_PATH" ;
+          .\gradlew.bat -version
+          # Same invocation as the local build. STATIC_BUILD makes win.gradle emit <name>.lib
+          # instead of <name>.dll; media and WebKit are off by default and must stay off, since
+          # build.gradle rejects COMPILE_MEDIA together with STATIC_BUILD.
+          # Skip "chmod" task for GHA builds. See JDK-8354337 for details.
+          .\gradlew.bat --stacktrace -PCHMOD_ARTIFACTS=false -PSTATIC_BUILD=true -PCONF=Release sdk
+
+      - name: Assemble bundle
+        run: |
+          New-Item -ItemType Directory -Force dist\static-libs | Out-Null
+          Copy-Item build\sdk\lib\*.lib dist\static-libs\
+          # Record the JavaFX version these libs came from: the consuming project takes its JavaFX
+          # *jars* from Maven Central, so this is the only place the two versions can be compared.
+          @(
+            "commit=$env:GITHUB_SHA"
+            "run=$env:GITHUB_RUN_ID"
+            "built=$((Get-Date).ToUniversalTime().ToString('u'))"
+            (Get-Content build\sdk\lib\javafx.properties)
+          ) | Set-Content dist\BUNDLE-INFO.txt
+
+          # glass.lib is ~38 MB when this is a real static archive. A ~50 KB one means STATIC_BUILD
+          # did not take effect and we produced import libraries instead.
+          Get-ChildItem dist\static-libs | Select-Object Name, Length
+          $glass = Get-Item dist\static-libs\glass.lib
+          if ($glass.Length -lt 10MB) { throw "glass.lib is only $($glass.Length) bytes - not a static archive" }
+
+          Compress-Archive -Path dist\* -DestinationPath javafx-static-win-x64.zip
+
+      - name: Upload bundle as workflow artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: javafx-static-win-x64
+          path: javafx-static-win-x64.zip
+          if-no-files-found: error
+
+      - name: Publish release asset
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Rolling tag: consumers pin to "static-win-x64-latest" and always get the newest build.
+          # The delete is expected to fail on the very first run, so do not let it abort the step.
+          $ErrorActionPreference = 'Continue'
+          gh release delete "$env:RELEASE_TAG" --yes --cleanup-tag 2>&1 | Out-Null
+          $ErrorActionPreference = 'Stop'
+          $global:LASTEXITCODE = 0
+
+          gh release create "$env:RELEASE_TAG" javafx-static-win-x64.zip `
+            --title "Static JavaFX SDK (Windows x64)" `
+            --notes "STATIC_BUILD (CONF=Release) of ``$env:GITHUB_SHA``"
