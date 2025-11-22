@@ -1,0 +1,120 @@
+# Builds a static JavaFX SDK for Linux x64 and publishes it as a release asset.
+#
+# Must be copied into: <graalvm>/lib/static/linux-amd64/glibc
+#
+# Bundle layout (javafx-static-linux-x64.zip):
+# - static-libs/
+#   - libglass.a
+#   - libglassgtk3.a
+#   - libprism_common.a
+#   - libprism_es2.a
+#   - libprism_sw.a
+#   - libjavafx_font.a
+#   - libjavafx_font_freetype.a
+#   - libjavafx_font_pango.a
+#   - libjavafx_iio.a
+#   - libdecora_sse.a
+# - BUNDLE-INFO.txt
+#
+name: Static Linux SDK
+
+on:
+  push:
+    branches: [ RELEASE ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  static_linux_sdk:
+    name: Static SDK (Linux x64)
+    runs-on: "ubuntu-24.04"
+    timeout-minutes: 60
+
+    env:
+      BOOT_JDK_VERSION: "25.0.1"
+      BOOT_JDK_FILENAME: "jdk-25.0.1_linux-x64_bin.tar.gz"
+      BOOT_JDK_URL: "https://download.oracle.com/java/25/archive/jdk-25.0.1_linux-x64_bin.tar.gz"
+      RELEASE_TAG: static-linux-x64-latest
+
+    steps:
+      - name: Checkout the source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Download boot JDK
+        run: |
+          set -eux
+          mkdir -p "${HOME}/bootjdk"
+          wget -O "${HOME}/bootjdk/${BOOT_JDK_FILENAME}" "${BOOT_JDK_URL}"
+          tar -xf "${HOME}/bootjdk/${BOOT_JDK_FILENAME}" -C "${HOME}/bootjdk"
+
+      - name: Install dependencies
+        run: |
+          set -eux
+          sudo apt-get update
+          sudo apt-get install -y ant libgl1-mesa-dev libx11-dev libxxf86vm-dev libxt-dev pkg-config libgtk-3-dev libxtst-dev gcc-14 g++-14
+          sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-14 100 --slave /usr/bin/g++ g++ /usr/bin/g++-14
+
+      - name: Setup environment
+        run: |
+          set -eux
+          export JAVA_HOME="${HOME}/bootjdk/jdk-${BOOT_JDK_VERSION}"
+          echo "JAVA_HOME=${JAVA_HOME}" >> "${GITHUB_ENV}"
+          echo "${JAVA_HOME}/bin" >> "${GITHUB_PATH}"
+          "${JAVA_HOME}/bin/java" -version
+          ant -version
+          gcc -v
+
+      - name: Build static SDK
+        run: |
+          set -eux
+          bash gradlew -version
+          # Same invocation as the local build. STATIC_BUILD makes linux.gradle emit lib<name>.a
+          # instead of lib<name>.so; media and WebKit are off by default and must stay off, since
+          # build.gradle rejects COMPILE_MEDIA together with STATIC_BUILD.
+          # Skip "chmod" task for GHA builds. See JDK-8354337 for details.
+          bash gradlew --stacktrace -PCHMOD_ARTIFACTS=false -PSTATIC_BUILD=true -PCONF=Release sdk
+
+      - name: Assemble bundle
+        run: |
+          set -eux
+          mkdir -p dist/static-libs
+          cp build/sdk/lib/*.a dist/static-libs/
+          # Record the JavaFX version these libs came from: the consuming project takes its JavaFX
+          # *jars* from Maven Central, so this is the only place the two versions can be compared.
+          {
+            echo "commit=${GITHUB_SHA}"
+            echo "run=${GITHUB_RUN_ID}"
+            echo "built=$(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+            cat build/sdk/lib/javafx.properties
+          } > dist/BUNDLE-INFO.txt
+
+          ls -l dist/static-libs
+          # A non-static build produces .so files only, so a missing archive means STATIC_BUILD did
+          # not take effect.
+          for lib in glass glassgtk3 prism_common prism_es2 prism_sw javafx_font \
+                     javafx_font_freetype javafx_font_pango javafx_iio decora_sse; do
+            test -f "dist/static-libs/lib${lib}.a"
+          done
+
+          (cd dist && zip -r ../javafx-static-linux-x64.zip .)
+
+      - name: Upload bundle as workflow artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: javafx-static-linux-x64
+          path: javafx-static-linux-x64.zip
+          if-no-files-found: error
+
+      - name: Publish release asset
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Rolling tag: consumers pin to "static-linux-x64-latest" and always get the newest build.
+          # The delete is expected to fail on the very first run.
+          gh release delete "${RELEASE_TAG}" --yes --cleanup-tag || true
+
+          gh release create "${RELEASE_TAG}" javafx-static-linux-x64.zip \
+            --title "Static JavaFX SDK (Linux x64)" \
+            --notes "STATIC_BUILD (CONF=Release) of \`${GITHUB_SHA}\`"
