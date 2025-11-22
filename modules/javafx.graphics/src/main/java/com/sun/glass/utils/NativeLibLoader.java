@@ -110,6 +110,9 @@ public class NativeLibLoader {
     }
 
     private static void loadLibraryInternal(String libraryName, List<String> dependencies, Class caller) {
+        if (trySystemLoad(libraryName)) {
+            return;
+        }
         // The search order for native library loading is:
         // - try to load the native library from either ${java.home}
         //   (for jlinked javafx modules) or from the same folder as
@@ -431,6 +434,17 @@ public class NativeLibLoader {
             // Throw UnsatisfiedLinkError for best compatibility with System.loadLibrary()
             throw (UnsatisfiedLinkError) new UnsatisfiedLinkError().initCause(e);
         }
+    }
+
+    private static boolean trySystemLoad(String libraryName) {
+        try {
+            System.loadLibrary(libraryName);
+            return true;
+        } catch (UnsatisfiedLinkError ex2) {
+            System.err.println("Failed to load library: " + libraryName);
+        }
+
+        return false;
     }
 
 }

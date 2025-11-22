@@ -77,7 +77,7 @@
 # which is not needed to build or test the JavaFX modules themselves.
 # Uncomment this flag in order to not build and clean the apps.
 
-#INCLUDE_APPS = false
+INCLUDE_APPS = false
 
 # Specifies whether to build SDK for running the provided test task.
 # By default, it is set to false and the tests are running of the
@@ -185,7 +185,7 @@
 
 # Specify the build configuration: Release, Debug, or DebugNative. The default setting is Debug.
 
-#CONF = Release
+CONF = Release
 
 # Gradle 1.x incremental compilation
 #

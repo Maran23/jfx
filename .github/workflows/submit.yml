@@ -47,6 +47,7 @@ on:
       - main
       - 'jfx[0-9]+'
       - 'WIP*'
+      - RELEASE
   # Enable triggering the workflow manually
   workflow_dispatch:
 
