@@ -97,7 +97,7 @@ public class TreeCell<T> extends IndexedCell<T> {
      **************************************************************************/
 
     private final ListChangeListener<Integer> selectedListener = c -> {
-        updateSelection();
+        updateSelectionAndCellIfChanged();
     };
 
     /**
@@ -114,7 +114,7 @@ public class TreeCell<T> extends IndexedCell<T> {
             if (newValue != null) {
                 newValue.getSelectedIndices().addListener(weakSelectedListener);
             }
-            updateSelection();
+            updateSelectionAndCellIfChanged();
         }
     };
 
@@ -262,87 +262,86 @@ public class TreeCell<T> extends IndexedCell<T> {
 
 
     // --- TreeView
-    private ReadOnlyObjectWrapper<TreeView<T>> treeView = new ReadOnlyObjectWrapper<>() {
-        private WeakReference<TreeView<T>> weakTreeViewRef;
-        @Override protected void invalidated() {
-            MultipleSelectionModel<TreeItem<T>> sm;
-            FocusModel<TreeItem<T>> fm;
+    private ReadOnlyObjectWrapper<TreeView<T>> treeView;
 
-            if (weakTreeViewRef != null) {
-                TreeView<T> oldTreeView = weakTreeViewRef.get();
-                if (oldTreeView != null) {
-                    // remove old listeners
-                    sm = oldTreeView.getSelectionModel();
-                    if (sm != null) {
-                        sm.getSelectedIndices().removeListener(weakSelectedListener);
+    private ReadOnlyObjectWrapper<TreeView<T>> treeViewPropertyImpl() {
+        if (treeView == null) {
+            treeView = new ReadOnlyObjectWrapper<>(this, "treeView") {
+
+                private WeakReference<TreeView<T>> weakTreeViewRef;
+
+                @Override
+                protected void invalidated() {
+                    MultipleSelectionModel<TreeItem<T>> sm;
+                    FocusModel<TreeItem<T>> fm;
+
+                    if (weakTreeViewRef != null) {
+                        TreeView<T> oldTreeView = weakTreeViewRef.get();
+                        if (oldTreeView != null) {
+                            // remove old listeners
+                            sm = oldTreeView.getSelectionModel();
+                            if (sm != null) {
+                                sm.getSelectedIndices().removeListener(weakSelectedListener);
+                            }
+
+                            fm = oldTreeView.getFocusModel();
+                            if (fm != null) {
+                                fm.focusedIndexProperty().removeListener(weakFocusedListener);
+                            }
+
+                            oldTreeView.editingItemProperty().removeListener(weakEditingListener);
+                            oldTreeView.rootProperty().removeListener(weakRootPropertyListener);
+                            oldTreeView.focusModelProperty().removeListener(weakFocusModelPropertyListener);
+                            oldTreeView.selectionModelProperty().removeListener(weakSelectionModelPropertyListener);
+                        }
+
+                        weakTreeViewRef = null;
                     }
 
-                    fm = oldTreeView.getFocusModel();
-                    if (fm != null) {
-                        fm.focusedIndexProperty().removeListener(weakFocusedListener);
+                    TreeView<T> newTreeView = get();
+                    if (newTreeView != null) {
+                        sm = newTreeView.getSelectionModel();
+                        if (sm != null) {
+                            // listening for changes to treeView.selectedIndex and IndexedCell.index,
+                            // to determine if this cell is selected
+                            sm.getSelectedIndices().addListener(weakSelectedListener);
+                        }
+
+                        fm = newTreeView.getFocusModel();
+                        if (fm != null) {
+                            // similar to above, but this time for focus
+                            fm.focusedIndexProperty().addListener(weakFocusedListener);
+                        }
+
+                        newTreeView.editingItemProperty().addListener(weakEditingListener);
+                        newTreeView.focusModelProperty().addListener(weakFocusModelPropertyListener);
+                        newTreeView.selectionModelProperty().addListener(weakSelectionModelPropertyListener);
+                        newTreeView.rootProperty().addListener(weakRootPropertyListener);
+
+                        weakTreeViewRef = new WeakReference<>(newTreeView);
                     }
 
-                    oldTreeView.editingItemProperty().removeListener(weakEditingListener);
-                    oldTreeView.focusModelProperty().removeListener(weakFocusModelPropertyListener);
-                    oldTreeView.selectionModelProperty().removeListener(weakSelectionModelPropertyListener);
-                    oldTreeView.rootProperty().removeListener(weakRootPropertyListener);
+                    updateCellPropertiesAndItem(-1);
                 }
-
-                weakTreeViewRef = null;
-            }
-
-            TreeView<T> treeView = get();
-            if (treeView != null) {
-                sm = treeView.getSelectionModel();
-                if (sm != null) {
-                    // listening for changes to treeView.selectedIndex and IndexedCell.index,
-                    // to determine if this cell is selected
-                    sm.getSelectedIndices().addListener(weakSelectedListener);
-                }
-
-                fm = treeView.getFocusModel();
-                if (fm != null) {
-                    // similar to above, but this time for focus
-                    fm.focusedIndexProperty().addListener(weakFocusedListener);
-                }
-
-                treeView.editingItemProperty().addListener(weakEditingListener);
-                treeView.focusModelProperty().addListener(weakFocusModelPropertyListener);
-                treeView.selectionModelProperty().addListener(weakSelectionModelPropertyListener);
-                treeView.rootProperty().addListener(weakRootPropertyListener);
-
-                weakTreeViewRef = new WeakReference<>(treeView);
-            }
-
-            updateItem(-1);
-            requestLayout();
+            };
         }
+        return treeView;
+    }
 
-        @Override
-        public Object getBean() {
-            return TreeCell.this;
-        }
-
-        @Override
-        public String getName() {
-            return "treeView";
-        }
-    };
-
-    private void setTreeView(TreeView<T> value) { treeView.set(value); }
+    private void setTreeView(TreeView<T> value) { treeViewPropertyImpl().set(value); }
 
     /**
      * Returns the TreeView associated with this TreeCell.
      * @return the TreeView associated with this TreeCell
      */
-    public final TreeView<T> getTreeView() { return treeView.get(); }
+    public final TreeView<T> getTreeView() { return treeView == null ? null : treeViewPropertyImpl().get(); }
 
     /**
      * A TreeCell is explicitly linked to a single {@link TreeView} instance,
      * which is represented by this property.
      * @return the TreeView property of this TreeCell
      */
-    public final ReadOnlyObjectProperty<TreeView<T>> treeViewProperty() { return treeView.getReadOnlyProperty(); }
+    public final ReadOnlyObjectProperty<TreeView<T>> treeViewProperty() { return treeViewPropertyImpl().getReadOnlyProperty(); }
 
 
 
@@ -484,22 +483,35 @@ public class TreeCell<T> extends IndexedCell<T> {
     @Override void indexChanged(int oldIndex, int newIndex) {
         super.indexChanged(oldIndex, newIndex);
 
-        // when the cell index changes, this may result in the cell
-        // changing state to be selected and/or focused.
         if (isEditing() && newIndex == oldIndex) {
-            // no-op
             // Fix for JDK-8123482 - if we (needlessly) update the index whilst the
             // cell is being edited it will no longer be in an editing state.
             // This means that in certain (common) circumstances that it will
             // appear that a cell is uneditable as, despite being clicked, it
             // will not change to the editing state as a layout of VirtualFlow
             // is immediately invoked, which forces all cells to be updated.
-        } else {
-            updateItem(oldIndex);
-            updateSelection();
-            updateFocus();
-            updateEditing();
+            return;
         }
+
+        updateCellPropertiesAndItem(oldIndex);
+
+        // Ideally we would just use the following two lines of code, rather
+        // than the updateItem() call beneath, but if we do this we end up with
+        // JDK-8126803 where all the columns are collapsed.
+        // itemDirty = true;
+        // requestLayout();
+    }
+
+    private void updateCellPropertiesAndItem(int oldIndex) {
+        boolean isSelectionChanged = evalUpdateSelection();
+        updateFocus();
+        updateEditing();
+
+        // If the selection was changed, we want to make sure that we call updateItem(...,...)
+        if (isSelectionChanged) {
+            oldIndex = -1;
+        }
+        updateItem(oldIndex);
     }
 
     private boolean isFirstRun = true;
@@ -552,6 +564,21 @@ public class TreeCell<T> extends IndexedCell<T> {
                 isFirstRun = false;
             }
         }
+    }
+
+    private void updateSelectionAndCellIfChanged() {
+        boolean isChanged = evalUpdateSelection();
+
+        if (isChanged) {
+            updateItem(getItem(), isEmpty());
+        }
+    }
+
+    private boolean evalUpdateSelection() {
+        boolean oldSelected = isSelected();
+        updateSelection();
+        boolean newSelected = isSelected();
+        return oldSelected != newSelected;
     }
 
     private void updateSelection() {

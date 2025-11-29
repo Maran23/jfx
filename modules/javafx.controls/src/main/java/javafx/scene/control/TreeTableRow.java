@@ -92,7 +92,7 @@ public class TreeTableRow<T> extends IndexedCell<T> {
      **************************************************************************/
 
     private final ListChangeListener<Integer> selectedListener = c -> {
-        updateSelection();
+        updateSelectionAndCellIfChanged();
     };
 
     private final InvalidationListener focusedListener = valueModel -> {
@@ -213,70 +213,80 @@ public class TreeTableRow<T> extends IndexedCell<T> {
 
 
     // --- TreeView
-    private ReadOnlyObjectWrapper<TreeTableView<T>> treeTableView = new ReadOnlyObjectWrapper<>(this, "treeTableView") {
-        private WeakReference<TreeTableView<T>> weakTreeTableViewRef;
-        @Override protected void invalidated() {
-            TreeTableViewSelectionModel<T> sm;
-            TreeTableViewFocusModel<T> fm;
+    private ReadOnlyObjectWrapper<TreeTableView<T>> treeTableView;
 
-            if (weakTreeTableViewRef != null) {
-                TreeTableView<T> oldTreeTableView = weakTreeTableViewRef.get();
-                if (oldTreeTableView != null) {
-                    // remove old listeners
-                    sm = oldTreeTableView.getSelectionModel();
-                    if (sm != null) {
-                        sm.getSelectedIndices().removeListener(weakSelectedListener);
+    private ReadOnlyObjectWrapper<TreeTableView<T>> treeTableViewPropertyImpl() {
+        if (treeTableView == null) {
+            treeTableView = new ReadOnlyObjectWrapper<>(this, "treeTableView") {
+
+                private WeakReference<TreeTableView<T>> weakTreeTableViewRef;
+
+                @Override
+                protected void invalidated() {
+                    TreeTableViewSelectionModel<T> sm;
+                    TreeTableViewFocusModel<T> fm;
+
+                    if (weakTreeTableViewRef != null) {
+                        TreeTableView<T> oldTreeTableView = weakTreeTableViewRef.get();
+                        if (oldTreeTableView != null) {
+                            // remove old listeners
+                            sm = oldTreeTableView.getSelectionModel();
+                            if (sm != null) {
+                                sm.getSelectedIndices().removeListener(weakSelectedListener);
+                            }
+
+                            fm = oldTreeTableView.getFocusModel();
+                            if (fm != null) {
+                                fm.focusedIndexProperty().removeListener(weakFocusedListener);
+                            }
+
+                            oldTreeTableView.editingCellProperty().removeListener(weakEditingListener);
+                        }
+
+                        weakTreeTableViewRef = null;
                     }
 
-                    fm = oldTreeTableView.getFocusModel();
-                    if (fm != null) {
-                        fm.focusedIndexProperty().removeListener(weakFocusedListener);
+                    TreeTableView<T> newTreeTableView = get();
+                    if (newTreeTableView != null) {
+                        sm = newTreeTableView.getSelectionModel();
+                        if (sm != null) {
+                            // listening for changes to treeView.selectedIndex and IndexedCell.index,
+                            // to determine if this cell is selected
+                            sm.getSelectedIndices().addListener(weakSelectedListener);
+                        }
+
+                        fm = newTreeTableView.getFocusModel();
+                        if (fm != null) {
+                            // similar to above, but this time for focus
+                            fm.focusedIndexProperty().addListener(weakFocusedListener);
+                        }
+
+                        newTreeTableView.editingCellProperty().addListener(weakEditingListener);
+
+                        weakTreeTableViewRef = new WeakReference<>(newTreeTableView);
                     }
 
-                    oldTreeTableView.editingCellProperty().removeListener(weakEditingListener);
+                    updateCellPropertiesAndItem(-1);
                 }
-
-                weakTreeTableViewRef = null;
-            }
-
-            if (get() != null) {
-                sm = get().getSelectionModel();
-                if (sm != null) {
-                    // listening for changes to treeView.selectedIndex and IndexedCell.index,
-                    // to determine if this cell is selected
-                    sm.getSelectedIndices().addListener(weakSelectedListener);
-                }
-
-                fm = get().getFocusModel();
-                if (fm != null) {
-                    // similar to above, but this time for focus
-                    fm.focusedIndexProperty().addListener(weakFocusedListener);
-                }
-
-                get().editingCellProperty().addListener(weakEditingListener);
-
-                weakTreeTableViewRef = new WeakReference<>(get());
-            }
-
-            updateItem(-1);
-            requestLayout();
+            };
         }
-    };
+        return treeTableView;
+    }
 
-    private void setTreeTableView(TreeTableView<T> value) { treeTableView.set(value); }
+    private void setTreeTableView(TreeTableView<T> value) { treeTableViewPropertyImpl().set(value); }
 
     /**
      * Returns the TreeTableView associated with this TreeTableCell.
      * @return the tree table view
      */
-    public final TreeTableView<T> getTreeTableView() { return treeTableView.get(); }
+    public final TreeTableView<T> getTreeTableView() { return treeTableView == null ? null : treeTableViewPropertyImpl().get(); }
 
     /**
      * A TreeTableCell is explicitly linked to a single {@link TreeTableView} instance,
      * which is represented by this property.
      * @return the tree table view property
      */
-    public final ReadOnlyObjectProperty<TreeTableView<T>> treeTableViewProperty() { return treeTableView.getReadOnlyProperty(); }
+    public final ReadOnlyObjectProperty<TreeTableView<T>> treeTableViewProperty() { return treeTableViewPropertyImpl().getReadOnlyProperty(); }
 
 
 
@@ -293,13 +303,36 @@ public class TreeTableRow<T> extends IndexedCell<T> {
     @Override void indexChanged(int oldIndex, int newIndex) {
         super.indexChanged(oldIndex, newIndex);
 
-        // when the cell index changes, this may result in the cell
-        // changing state to be selected and/or focused.
-        updateItem(oldIndex);
-        updateSelection();
-        updateFocus();
+        if (isEditing() && newIndex == oldIndex) {
+            // Fix for JDK-8123482 - if we (needlessly) update the index whilst the
+            // cell is being edited it will no longer be in an editing state.
+            // This means that in certain (common) circumstances that it will
+            // appear that a cell is uneditable as, despite being clicked, it
+            // will not change to the editing state as a layout of VirtualFlow
+            // is immediately invoked, which forces all cells to be updated.
+            return;
+        }
+
+        updateCellPropertiesAndItem(oldIndex);
+
+        // Ideally we would just use the following two lines of code, rather
+        // than the updateItem() call beneath, but if we do this we end up with
+        // JDK-8126803 where all the columns are collapsed.
+        // itemDirty = true;
+        // requestLayout();
     }
 
+    private void updateCellPropertiesAndItem(int oldIndex) {
+        boolean isSelectionChanged = evalUpdateSelection();
+        updateFocus();
+        updateEditing();
+
+        // If the selection was changed, we want to make sure that we call updateItem(...,...)
+        if (isSelectionChanged) {
+            oldIndex = -1;
+        }
+        updateItem(oldIndex);
+    }
 
     /** {@inheritDoc} */
     @Override public void startEdit() {
@@ -440,6 +473,21 @@ public class TreeTableRow<T> extends IndexedCell<T> {
                 isFirstRun = false;
             }
         }
+    }
+
+    private void updateSelectionAndCellIfChanged() {
+        boolean isChanged = evalUpdateSelection();
+
+        if (isChanged) {
+            updateItem(getItem(), isEmpty());
+        }
+    }
+
+    private boolean evalUpdateSelection() {
+        boolean oldSelected = isSelected();
+        updateSelection();
+        boolean newSelected = isSelected();
+        return oldSelected != newSelected;
     }
 
     private void updateSelection() {

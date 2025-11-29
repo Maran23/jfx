@@ -98,7 +98,7 @@ public class TableRow<T> extends IndexedCell<T> {
      * storeTableView method.
      */
     private ListChangeListener<Integer> selectedListener = c -> {
-        updateSelection();
+        updateSelectionAndCellIfChanged();
     };
 
     // Same as selectedListener, but this time for focus events
@@ -125,27 +125,14 @@ public class TableRow<T> extends IndexedCell<T> {
 
     // --- TableView
     private ReadOnlyObjectWrapper<TableView<T>> tableView;
-    private void setTableView(TableView<T> value) {
-        tableViewPropertyImpl().set(value);
-    }
-
-    public final TableView<T> getTableView() {
-        return tableView == null ? null : tableView.get();
-    }
-
-    /**
-     * The TableView associated with this Cell.
-     * @return the TableView associated with this Cell
-     */
-    public final ReadOnlyObjectProperty<TableView<T>> tableViewProperty() {
-        return tableViewPropertyImpl().getReadOnlyProperty();
-    }
 
     private ReadOnlyObjectWrapper<TableView<T>> tableViewPropertyImpl() {
         if (tableView == null) {
-            tableView = new ReadOnlyObjectWrapper<>() {
+            tableView = new ReadOnlyObjectWrapper<>(this, "tableView") {
                 private WeakReference<TableView<T>> weakTableViewRef;
-                @Override protected void invalidated() {
+
+                @Override
+                protected void invalidated() {
                     TableView.TableViewSelectionModel<T> sm;
                     TableViewFocusModel<T> fm;
 
@@ -168,36 +155,44 @@ public class TableRow<T> extends IndexedCell<T> {
                         weakTableViewRef = null;
                     }
 
-                    TableView<T> tableView = getTableView();
-                    if (tableView != null) {
-                        sm = tableView.getSelectionModel();
+                    TableView<T> newTableView = get();
+                    if (newTableView != null) {
+                        sm = newTableView.getSelectionModel();
                         if (sm != null) {
                             sm.getSelectedIndices().addListener(weakSelectedListener);
                         }
 
-                        fm = tableView.getFocusModel();
+                        fm = newTableView.getFocusModel();
                         if (fm != null) {
                             fm.focusedCellProperty().addListener(weakFocusedListener);
                         }
 
-                        tableView.editingCellProperty().addListener(weakEditingListener);
+                        newTableView.editingCellProperty().addListener(weakEditingListener);
 
-                        weakTableViewRef = new WeakReference<>(get());
+                        weakTableViewRef = new WeakReference<>(newTableView);
                     }
-                }
 
-                @Override
-                public Object getBean() {
-                    return TableRow.this;
-                }
-
-                @Override
-                public String getName() {
-                    return "tableView";
+                    updateCellPropertiesAndItem(-1);
                 }
             };
         }
         return tableView;
+    }
+
+    private void setTableView(TableView<T> value) {
+        tableViewPropertyImpl().set(value);
+    }
+
+    public final TableView<T> getTableView() {
+        return tableView == null ? null : tableViewPropertyImpl().get();
+    }
+
+    /**
+     * The TableView associated with this Cell.
+     * @return the TableView associated with this Cell
+     */
+    public final ReadOnlyObjectProperty<TableView<T>> tableViewProperty() {
+        return tableViewPropertyImpl().getReadOnlyProperty();
     }
 
 
@@ -223,9 +218,34 @@ public class TableRow<T> extends IndexedCell<T> {
     @Override void indexChanged(int oldIndex, int newIndex) {
         super.indexChanged(oldIndex, newIndex);
 
-        updateItem(oldIndex);
-        updateSelection();
+        if (isEditing() && newIndex == oldIndex) {
+            // Fix for JDK-8123482 - if we (needlessly) update the index whilst the
+            // cell is being edited it will no longer be in an editing state.
+            // This means that in certain (common) circumstances that it will
+            // appear that a cell is uneditable as, despite being clicked, it
+            // will not change to the editing state as a layout of VirtualFlow
+            // is immediately invoked, which forces all cells to be updated.
+            return;
+        }
+
+        updateCellPropertiesAndItem(oldIndex);
+        // Ideally we would just use the following two lines of code, rather
+        // than the updateItem() call beneath, but if we do this we end up with
+        // JDK-8126803 where all the columns are collapsed.
+        // itemDirty = true;
+        // requestLayout();
+    }
+
+    private void updateCellPropertiesAndItem(int oldIndex) {
+        boolean isSelectionChanged = evalUpdateSelection();
         updateFocus();
+        updateEditing();
+
+        // If the selection was changed, we want to make sure that we call updateItem(...,...)
+        if (isSelectionChanged) {
+            oldIndex = -1;
+        }
+        updateItem(oldIndex);
     }
 
     private boolean isFirstRun = true;
@@ -270,6 +290,21 @@ public class TableRow<T> extends IndexedCell<T> {
                 isFirstRun = false;
             }
         }
+    }
+
+    private void updateSelectionAndCellIfChanged() {
+        boolean isChanged = evalUpdateSelection();
+
+        if (isChanged) {
+            updateItem(getItem(), isEmpty());
+        }
+    }
+
+    private boolean evalUpdateSelection() {
+        boolean oldSelected = isSelected();
+        updateSelection();
+        boolean newSelected = isSelected();
+        return oldSelected != newSelected;
     }
 
     private void updateSelection() {

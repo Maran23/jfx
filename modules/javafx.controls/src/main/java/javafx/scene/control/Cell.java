@@ -626,16 +626,6 @@ public class Cell<T> extends Labeled {
         }
     }
 
-    /** {@inheritDoc} */
-    @Override protected void layoutChildren() {
-        if (itemDirty) {
-            updateItem(getItem(), isEmpty());
-            itemDirty = false;
-        }
-        super.layoutChildren();
-    }
-
-
 
     /* *************************************************************************
      *                                                                         *
@@ -693,8 +683,9 @@ public class Cell<T> extends Labeled {
     protected void updateItem(T item, boolean empty) {
         setItem(item);
         setEmpty(empty);
-        if (empty && isSelected()) {
-            updateSelected(false);
+
+        if (isInvalidSelection(isSelected())) {
+            setSelected(false);
         }
     }
 
@@ -703,13 +694,14 @@ public class Cell<T> extends Labeled {
      * @param selected whether or not to select this cell.
      */
     public void updateSelected(boolean selected) {
-        if (selected && isEmpty()) return;
-        boolean wasSelected = isSelected();
-        setSelected(selected);
-
-        if (wasSelected != selected) {
-            markCellDirty();
+        if (isInvalidSelection(selected)) {
+            return;
         }
+        setSelected(selected);
+    }
+
+    boolean isInvalidSelection(boolean selected) {
+        return selected && isEmpty();
     }
 
     /**
@@ -745,16 +737,6 @@ public class Cell<T> extends Labeled {
      * Private Implementation                                                  *
      *                                                                         *
      **************************************************************************/
-
-    // itemDirty and markCellDirty introduced as a solution for JDK-8145588.
-    // In the fullness of time, a more fully developed solution can be developed
-    // that offers a public API around this lazy-dirty impl.
-    private boolean itemDirty = false;
-    private final void markCellDirty() {
-        itemDirty = true;
-        requestLayout();
-    }
-
 
     /* *************************************************************************
      *                                                                         *
