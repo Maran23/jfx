@@ -4330,6 +4330,9 @@ project(":systemTests") {
     addValidateSourceSets(project, nonModSrcSets, modSrcSets)
 }
 
+if (project.gradle.startParameter.taskNames.contains("all")) {
+    defineProperty("MAVEN_PUBLISH", "true")
+}
 // Apply Maven Publishing to all projects (if enabled).
 // Need to be done after all projects were defined that should be published.
 apply from: 'maven-publish.gradle'
@@ -4817,8 +4820,12 @@ task zips() {
 
 task all() {
     dependsOn(sdk, shims, publicExports, apps, perf, zips)
+    subprojects.each { p ->
+        p.plugins.withId("maven-publish") {
+            dependsOn(p.tasks.named("publishToMavenLocal"))
+        }
+    }
 }
-
 
 // Construct list of subprojects that are modules
 ext.moduleProjList = []
