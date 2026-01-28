@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -44,7 +44,6 @@ public class VirtualFlowShim<T extends IndexedCell> extends VirtualFlow<T> {
         super.setViewportLength(value);
     }
 
-    @Override
     public double getCellLength(int index) {
         return super.getCellLength(index);
     }
@@ -52,11 +51,6 @@ public class VirtualFlowShim<T extends IndexedCell> extends VirtualFlow<T> {
     @Override
     public double getCellPosition(T cell) {
         return super.getCellPosition(cell);
-    }
-
-    @Override
-    public double getCellSize(int idx) {
-        return super.getCellSize(idx);
     }
 
     @Override
@@ -82,7 +76,7 @@ public class VirtualFlowShim<T extends IndexedCell> extends VirtualFlow<T> {
     }
 
     public int shim_computeCurrentIndex() {
-        return super.computeCurrentIndex();
+        return getFlowModel().computeCurrentCellIndex();
     }
 
     public Region get_clipView() {

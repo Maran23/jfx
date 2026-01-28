@@ -1972,10 +1972,10 @@ assertEquals(0, firstCell.getIndex());
             IndexedCell<?> cell = flow.getFirstVisibleCell();
             positions[cell.getIndex()] = flow.getCellPosition(cell);
             for (int i = cell.getIndex() + 1; i < cellCount; i++) {
-                positions[i] = positions[i - 1] + flow.getCellSize(i - 1);
+                positions[i] = positions[i - 1] + flow.getCellLength(i - 1);
             }
             for (int i = cell.getIndex() - 1; i >= 0; i--) {
-                positions[i] = positions[i + 1] - flow.getCellSize(i);
+                positions[i] = positions[i + 1] - flow.getCellLength(i);
             }
             return positions;
         };
