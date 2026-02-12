@@ -102,7 +102,7 @@ ext.configureMavenPublication = { List<Project> projects, CompileTarget t, Task 
         }
 
         def modularPublicationJarName = "${moduleName}-${t.name}.jar"
-        project.tasks.register("modularPublicationJar${t.capital}", Jar) {
+        def modularPublicationJarTask = project.tasks.register("modularPublicationJar${t.capital}", Jar) {
             dependsOn modularEmptyPublicationJarTask
 
             destinationDirectory = file("${dstModularJarDir}")
