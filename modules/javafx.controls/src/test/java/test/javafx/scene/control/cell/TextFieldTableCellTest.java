@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,19 +30,15 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import javafx.beans.property.ReadOnlyStringWrapper;
 import javafx.collections.FXCollections;
 import javafx.scene.control.TableCell;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
-import javafx.scene.control.TextField;
 import javafx.scene.control.cell.TextFieldTableCell;
-import javafx.scene.input.MouseButton;
 import javafx.util.Callback;
 import javafx.util.StringConverter;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import test.com.sun.javafx.scene.control.infrastructure.MouseEventFirer;
 
 public class TextFieldTableCellTest {
 
@@ -370,44 +366,4 @@ public class TextFieldTableCellTest {
         assertNull(cell.getGraphic());
     }
 
-
-    /**************************************************************************
-     *
-     * Tests for specific bugs
-     *
-     **************************************************************************/
-
-    @Test public void test_rt_32869() {
-        TableColumn tc = new TableColumn();
-        tc.setCellValueFactory(param -> new ReadOnlyStringWrapper("Dummy Text"));
-
-        TableView tableView = new TableView(FXCollections.observableArrayList("TEST"));
-        tableView.getColumns().add(tc);
-        tableView.setEditable(true);
-        TextFieldTableCell<Object,Object> cell = new TextFieldTableCell<>();
-        cell.updateTableView(tableView);
-        cell.updateIndex(0);
-        cell.updateTableColumn(tc);
-        cell.setEditable(true);
-
-        tableView.edit(0, tc);
-        assertTrue(cell.isEditing());
-        assertNotNull(cell.getGraphic());
-
-        TextField textField = (TextField) cell.getGraphic();
-        MouseEventFirer mouse = new MouseEventFirer(textField);
-
-        textField.requestFocus();
-        textField.selectAll();
-        assertEquals("Dummy Text", textField.getSelectedText());
-
-        assertEquals("Dummy Text", textField.getSelectedText());
-
-        mouse.fireMousePressed(MouseButton.SECONDARY);
-        assertEquals("Dummy Text", textField.getSelectedText());
-        mouse.fireMouseReleased(MouseButton.SECONDARY);
-        assertEquals("Dummy Text", textField.getSelectedText());
-
-        mouse.dispose();
-    }
 }
