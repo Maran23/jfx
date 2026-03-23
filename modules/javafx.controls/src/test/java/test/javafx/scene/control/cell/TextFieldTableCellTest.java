@@ -30,19 +30,29 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import javafx.beans.property.ReadOnlyStringWrapper;
 import javafx.collections.FXCollections;
+import javafx.scene.control.IndexedCell;
 import javafx.scene.control.TableCell;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
+import javafx.scene.control.TextField;
 import javafx.scene.control.cell.TextFieldTableCell;
+import javafx.scene.input.MouseButton;
 import javafx.util.Callback;
 import javafx.util.StringConverter;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import test.com.sun.javafx.scene.control.infrastructure.MouseEventFirer;
+import test.com.sun.javafx.scene.control.infrastructure.StageLoader;
+import test.com.sun.javafx.scene.control.infrastructure.VirtualFlowTestUtils;
 
 public class TextFieldTableCellTest {
 
     private StringConverter<Object> converter;
+    private StageLoader stageLoader;
 
     @BeforeEach
     public void setup() {
@@ -55,6 +65,13 @@ public class TextFieldTableCellTest {
                 return null;
             }
         };
+    }
+
+    @AfterEach
+    public void afterEach() {
+        if (stageLoader != null) {
+            stageLoader.dispose();
+        }
     }
 
     /**************************************************************************
@@ -364,6 +381,39 @@ public class TextFieldTableCellTest {
         tableView.edit(-1, null);
         assertFalse(cell.isEditing());
         assertNull(cell.getGraphic());
+    }
+
+    @Test public void testJDK8119995() {
+        String text = "Dummy Text";
+
+        TableColumn<String, String> tc = new TableColumn<>();
+        tc.setCellValueFactory(_ -> new ReadOnlyStringWrapper(text));
+        tc.setCellFactory(TextFieldTableCell.forTableColumn());
+
+        TableView<String> tableView = new TableView<>(FXCollections.observableArrayList("TEST"));
+        tableView.getColumns().add(tc);
+        tableView.setEditable(true);
+
+        stageLoader = new StageLoader(tableView);
+
+        tableView.edit(0, tc);
+
+        IndexedCell<String> cell = VirtualFlowTestUtils.getCell(tableView, 0, 0);
+
+        assertTrue(cell.isEditing());
+        assertNotNull(cell.getGraphic());
+
+        TextField textField = (TextField) cell.getGraphic();
+
+        textField.requestFocus();
+        textField.selectAll();
+        assertEquals(text, textField.getSelectedText());
+
+        MouseEventFirer mouse = new MouseEventFirer(textField);
+        mouse.fireMousePressed(MouseButton.SECONDARY);
+        assertEquals(text, textField.getSelectedText());
+        mouse.fireMouseReleased(MouseButton.SECONDARY);
+        assertEquals(text, textField.getSelectedText());
     }
 
 }
