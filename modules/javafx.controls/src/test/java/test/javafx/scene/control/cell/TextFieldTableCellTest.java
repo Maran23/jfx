@@ -415,5 +415,4 @@ public class TextFieldTableCellTest {
         mouse.fireMouseReleased(MouseButton.SECONDARY);
         assertEquals(text, textField.getSelectedText());
     }
-
 }
