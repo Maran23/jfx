@@ -611,7 +611,7 @@ public class TreeCell<T> extends IndexedCell<T> {
 
     /**
      * Stops the edit operation.
-     * If not overwritten, will cancel the edit without changing control'sediting state.
+     * If {@link #cancelEdit()} is called as a result, we will not update the editing index.
      */
     private void doStopEdit() {
         // If my index is not the one being edited then I need to cancel
