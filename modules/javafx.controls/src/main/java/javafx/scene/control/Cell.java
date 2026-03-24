@@ -371,11 +371,16 @@ public class Cell<T> extends Labeled {
 
     /**
      * Stops the edit operation of the cell.
-     * This method is called when another cell is edited or the focus changed.
+     * This method is called when the edit operation was stopped by the container or the focus changed.
+     * <p>
+     * Call this function to transition from an editing state into a non-editing
+     * and there was no active cancel or commit request.
      * <p>
      * The default behavior is to cancel the edit.
      * This method is meant to be subclassed in case the default behavior is not enough.
      * For example, subclasses decide to rather commit the edit operation instead of cancelling.
+     *
+     * @since 27
      */
     public void stopEdit() {
         if (!isEditing()) {
