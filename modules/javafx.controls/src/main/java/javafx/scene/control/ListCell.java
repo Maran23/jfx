@@ -500,41 +500,34 @@ public class ListCell<T> extends IndexedCell<T> {
     private void updateItem(int oldIndex) {
         final ListView<T> lv = getListView();
         final List<T> items = lv == null ? null : lv.getItems();
-        final int index = getIndex();
         final int itemCount = items == null ? -1 : items.size();
 
-        // Compute whether the index for this cell is for a real item
-        boolean valid = items != null && index >=0 && index < itemCount;
-
+        final int index = getIndex();
         final T oldValue = getItem();
-        final boolean isEmpty = isEmpty();
 
-        // Cause the cell to update itself
-        outer: if (valid) {
-            final T newValue = items.get(index);
+        final boolean indexExceedsItemCount = index >= itemCount;
 
-            // JDK-8092593 - if the index didn't change, then avoid calling updateItem
-            // unless the item has changed.
-            if (oldIndex == index) {
-                if (!isItemChanged(oldValue, newValue)) {
-                    // JDK-8096969:  we break out of the if/else code here and
-                    // proceed with the code following this, so that we may
-                    // still update references, listeners, etc as required.
-                    break outer;
-                }
-            }
-            updateItem(newValue, false);
-        } else {
-            // JDK-8116529 We need to allow a first run to be special-cased to allow
-            // for the updateItem method to be called at least once to allow for
-            // the correct visual state to be set up. In particular, in JDK-8116529
-            // refer to Ensemble8PopUpTree.png - in this case the arrows are being
-            // shown as the new cells are instantiated with the arrows in the
-            // children list, and are only hidden in updateItem.
-            if (!isEmpty || firstRun) {
+        if (indexExceedsItemCount || index < 0) {
+            final boolean isEmpty = isEmpty();
+            if ((!isEmpty && oldValue != null) || firstRun) {
                 updateItem(null, true);
                 firstRun = false;
             }
+            return;
+        }
+
+        final T newValue = items.get(index);
+
+        // JDK-8092593 - if the index didn't change, then avoid calling updateItem
+        // unless the item has changed.
+        boolean shouldUpdate = true;
+        if (oldIndex == index) {
+            if (!isItemChanged(oldValue, newValue)) {
+                shouldUpdate = false;
+            }
+        }
+        if (shouldUpdate) {
+            updateItem(newValue, false);
         }
     }
 
@@ -583,28 +576,43 @@ public class ListCell<T> extends IndexedCell<T> {
     }
 
     private void updateEditing() {
-        final int index = getIndex();
         final ListView<T> list = getListView();
-        final int editIndex = list == null ? -1 : list.getEditingIndex();
-        final boolean editing = isEditing();
-        final boolean match = (list != null) && (index != -1) && (index == editIndex);
 
-        if (match && !editing) {
-            startEdit();
-        } else if (!match && editing) {
-            // If my index is not the one being edited then I need to cancel
-            // the edit. The tricky thing here is that as part of this call
-            // I cannot end up calling list.edit(-1) the way that the standard
-            // cancelEdit method would do. Yet, I need to call cancelEdit
-            // so that subclasses which override cancelEdit can execute. So,
-            // I have to use a kind of hacky flag workaround.
-            try {
-                // try-finally to make certain that the flag is reliably reset to true
-                updateEditingIndex = false;
-                cancelEdit();
-            } finally {
-                updateEditingIndex = true;
+        if (getIndex() == -1 || list == null) {
+            if (isEditing()) {
+                // JDK-8265210: must cancel edit if index changed to -1 by re-use
+                doCancelEdit();
             }
+            return;
+        }
+
+        final int editIndex = list.getEditingIndex();
+        final boolean rowMatch = getIndex() == editIndex;
+
+        if (isEditing()) {
+            if (!rowMatch) {
+                doCancelEdit();
+            }
+        } else {
+            if (rowMatch) {
+                startEdit();
+            }
+        }
+    }
+
+    private void doCancelEdit() {
+        // If my index is not the one being edited then I need to cancel
+        // the edit. The tricky thing here is that as part of this call
+        // I cannot end up calling list.edit(-1) the way that the standard
+        // cancelEdit method would do. Yet, I need to call cancelEdit
+        // so that subclasses which override cancelEdit can execute. So,
+        // I have to use a kind of hacky flag workaround.
+        try {
+            // try-finally to make certain that the flag is reliably reset to true
+            updateEditingIndex = false;
+            cancelEdit();
+        } finally {
+            updateEditingIndex = true;
         }
     }
 
@@ -654,4 +662,3 @@ public class ListCell<T> extends IndexedCell<T> {
         }
     }
 }
-
