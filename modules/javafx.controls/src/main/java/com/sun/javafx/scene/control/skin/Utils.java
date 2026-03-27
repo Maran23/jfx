@@ -49,11 +49,14 @@ import javafx.beans.InvalidationListener;
 import javafx.beans.Observable;
 import javafx.beans.value.ObservableValue;
 import javafx.collections.ObservableList;
+import javafx.css.PseudoClass;
 import javafx.geometry.Bounds;
 import javafx.geometry.HPos;
 import javafx.geometry.Point2D;
 import javafx.geometry.VPos;
+import javafx.scene.Node;
 import javafx.scene.Scene;
+import javafx.scene.control.Cell;
 import javafx.scene.control.ContextMenu;
 import javafx.scene.control.MenuItem;
 import javafx.scene.control.OverrunStyle;
@@ -97,6 +100,8 @@ public class Utils {
      * */
     private static final TextLayout layoutInstance = Toolkit.getToolkit().getTextLayoutFactory().createLayout();
     private static final AtomicBoolean layoutGuard = new AtomicBoolean(false);
+
+    private static final PseudoClass FOCUSED_PSEUDOCLASS_STATE = PseudoClass.getPseudoClass("focused");
 
     private static Text helper() {
         if (helperGuard.compareAndSet(false, true)) {
@@ -988,5 +993,20 @@ public class Utils {
 
     public static URL getResource(String str) {
         return Utils.class.getResource(str);
+    }
+
+    /**
+     * Sets fake focus, which can be achieved by setting the pseudoclass.
+     * This is done to maintain backward compatibility, especially with CSS.
+     *
+     * @param node the node
+     * @param focused the focused state
+     */
+    public static void setFakeFocused(Node node, boolean focused) {
+        node.pseudoClassStateChanged(FOCUSED_PSEUDOCLASS_STATE, focused);
+    }
+
+    public static boolean isFakeFocused(Node node) {
+        return node.getPseudoClassStates().contains(FOCUSED_PSEUDOCLASS_STATE);
     }
 }

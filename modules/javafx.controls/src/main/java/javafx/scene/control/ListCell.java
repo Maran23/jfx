@@ -28,7 +28,6 @@ package javafx.scene.control;
 import java.lang.ref.WeakReference;
 import java.util.List;
 
-import javafx.application.Platform;
 import javafx.beans.InvalidationListener;
 import javafx.beans.Observable;
 import javafx.beans.WeakInvalidationListener;
@@ -347,38 +346,6 @@ public class ListCell<T> extends IndexedCell<T> {
         return new ListCellSkin<>(this);
     }
 
-    /*
-     * The layoutChildren() method is overridden to address a specific accessibility issue: JDK-8309374
-     * If the Accessibility client application requests FOCUS_ITEM before the focused
-     * ListViewSkin/ListCell is created, then JavaFX would return a null object,
-     * and hence accessibility client application cannot draw the focus rectangle.
-     * In this scenario, JavaFX should notify the accessibility application once the
-     * focused ListCell is created and its layout is completed.
-     */
-    /** {@inheritDoc} */
-    @Override protected void layoutChildren() {
-        super.layoutChildren();
-
-        if (isFocused()) {
-            ListView<T> listView = getListView();
-            if (listView != null) {
-                /*
-                 * The notifyAccessibleAttributeChanged() call is submitted via runLater to defer it until after
-                 * the layout completes, because:
-                 * It is possible that when accessibility client application is processing a FOCUS_ITEM notification,
-                 * it may trigger a layout of focused ListItem, and it ends up generating another FOCUS_ITEM change
-                 * notification from here.
-                 * We observed that this scenario occurs when client application is trying to get the
-                 * the focus item property of a focused ListItem's parent(ListView).
-                 * This scenario is avoided by submitting the call via runLater,
-                 * so that the notification is not sent during any getAttribute() call.
-                 */
-                Platform.runLater(() -> listView.notifyAccessibleAttributeChanged(AccessibleAttribute.FOCUS_ITEM));
-            }
-        }
-    }
-
-
     /* *************************************************************************
      *                                                                         *
      * Editing API                                                             *
@@ -575,11 +542,20 @@ public class ListCell<T> extends IndexedCell<T> {
 
         FocusModel<T> fm = listView.getFocusModel();
         if (fm == null) {
-            setFocused(false);
+            setSubFocused(false);
             return;
         }
 
-        setFocused(fm.isFocused(index));
+        boolean focused = fm.isFocused(index);
+        setSubFocused(focused);
+    }
+
+    @Override
+    void fireAccessibleFocusItemChanged() {
+        ListView<T> listView = getListView();
+        if (listView != null) {
+            listView.notifyAccessibleAttributeChanged(AccessibleAttribute.FOCUS_ITEM);
+        }
     }
 
     private void updateEditing() {
@@ -654,4 +630,3 @@ public class ListCell<T> extends IndexedCell<T> {
         }
     }
 }
-

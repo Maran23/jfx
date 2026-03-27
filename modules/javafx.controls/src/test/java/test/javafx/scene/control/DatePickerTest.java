@@ -575,7 +575,7 @@ public class DatePickerTest {
         sl.dispose();
     }
 
-    @Test public void test_rt36902() {
+    @Test public void testTraversalDoesNotFocusFakeFocusTextField() {
         final DatePicker dp1 = new DatePicker() {
             @Override public String toString() {
                 return "dp1";

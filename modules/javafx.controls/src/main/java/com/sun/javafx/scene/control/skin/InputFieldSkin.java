@@ -26,6 +26,7 @@
 package com.sun.javafx.scene.control.skin;
 
 import com.sun.javafx.event.EventDispatchChainImpl;
+import com.sun.javafx.scene.NodeHelper;
 import com.sun.javafx.scene.control.InputField;
 import javafx.beans.InvalidationListener;
 import javafx.event.EventDispatchChain;
@@ -170,8 +171,8 @@ public abstract class InputFieldSkin implements Skin<InputField> {
     }
 
     private class InnerTextField extends TextField {
-        public void handleFocus(boolean b) {
-            setFocused(b);
+        public void handleFocus(boolean focused) {
+            NodeHelper.setFakeFocus(this, focused);
         }
 
         @Override public EventDispatchChain buildEventDispatchChain(EventDispatchChain tail) {

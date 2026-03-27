@@ -464,8 +464,18 @@ public class TreeTableRow<T> extends IndexedCell<T> {
         if (getIndex() == -1 || getTreeTableView() == null) return;
         if (getTreeTableView().getFocusModel() == null) return;
 
-        setFocused(getTreeTableView().getFocusModel().isFocused(getIndex()));
+        boolean focused = getTreeTableView().getFocusModel().isFocused(getIndex());
+        setSubFocused(focused);
     }
+
+    @Override
+    void fireAccessibleFocusItemChanged() {
+        TreeTableView<T> tableView = getTreeTableView();
+        if (tableView != null) {
+            tableView.notifyAccessibleAttributeChanged(AccessibleAttribute.FOCUS_ITEM);
+        }
+    }
+
 
     private void updateEditing() {
         if (getIndex() == -1 || getTreeTableView() == null || getTreeItem() == null) return;

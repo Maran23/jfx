@@ -303,14 +303,8 @@ public abstract class ComboBoxPopupControl<T> extends ComboBoxBaseSkin<T> {
     TextField getEditableInputNode() {
         if (textField == null && getEditor() != null) {
             textField = getEditor();
-            textField.setFocusTraversable(false);
             textField.promptTextProperty().bind(comboBoxBase.promptTextProperty());
             textField.tooltipProperty().bind(comboBoxBase.tooltipProperty());
-
-            // Fix for JDK-8145515 - in short the ComboBox was firing the event down to
-            // the TextField, and then the TextField was firing it back up to the
-            // ComboBox, resulting in stack overflows.
-            textField.getProperties().put(TextInputControlBehavior.DISABLE_FORWARD_TO_PARENT, true);
 
             // Fix for JDK-8126553: ComboBox do not show initial text value
             initialTextFieldValue = textField.getText();

@@ -37,7 +37,6 @@ import javafx.beans.property.SimpleObjectProperty;
 import javafx.beans.value.ChangeListener;
 import javafx.beans.value.ObservableValue;
 import javafx.beans.value.WritableValue;
-import javafx.collections.MapChangeListener;
 import javafx.collections.ObservableList;
 import javafx.scene.AccessibleAction;
 import javafx.scene.AccessibleAttribute;
@@ -152,17 +151,6 @@ public class Spinner<T> extends Control {
         getEditor().editableProperty().bind(editableProperty());
 
         value.addListener((o, oldValue, newValue) -> setText(newValue));
-
-        // Fix for JDK-8115009
-        getProperties().addListener((MapChangeListener<Object, Object>) change -> {
-            if (change.wasAdded()) {
-                if (change.getKey() == "FOCUSED") {
-                    setFocused((Boolean)change.getValueAdded());
-                    getProperties().remove("FOCUSED");
-                }
-            }
-        });
-        // End of fix for JDK-8115009
 
         focusedProperty().addListener(o -> {
             if (!isFocused()) {

@@ -546,11 +546,8 @@ public class TableCell<S,T> extends IndexedCell<T> {
     }
 
     private void updateFocus() {
-        final boolean isFocused = isFocused();
-        if (! isInCellSelectionMode()) {
-            if (isFocused) {
-                setFocused(false);
-            }
+        if (!isInCellSelectionMode()) {
+            setSubFocused(false);
             return;
         }
 
@@ -561,11 +558,20 @@ public class TableCell<S,T> extends IndexedCell<T> {
 
         final TableViewFocusModel<S> fm = tableView.getFocusModel();
         if (fm == null) {
-            setFocused(false);
+            setSubFocused(false);
             return;
         }
 
-        setFocused(fm.isFocused(index, getTableColumn()));
+        boolean focused = fm.isFocused(index, getTableColumn());
+        setSubFocused(focused);
+    }
+
+    @Override
+    void fireAccessibleFocusItemChanged() {
+        TableView<S> tableView = getTableView();
+        if (tableView != null) {
+            tableView.notifyAccessibleAttributeChanged(AccessibleAttribute.FOCUS_ITEM);
+        }
     }
 
     private void updateEditing() {

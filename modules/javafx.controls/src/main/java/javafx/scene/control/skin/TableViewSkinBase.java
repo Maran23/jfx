@@ -750,7 +750,7 @@ public abstract class TableViewSkinBase<M, S, C extends Control, I extends Index
         // isSelected represents focus OR selection
         boolean isSelected;
         if (isFocusDriven) {
-            isSelected = lastVisibleCell.isFocused() || isCellFocused(lastVisibleCellIndex);
+            isSelected = isCellFocused(lastVisibleCellIndex);
         } else {
             isSelected = lastVisibleCell.isSelected() || isCellSelected(lastVisibleCellIndex);
         }
@@ -793,7 +793,7 @@ public abstract class TableViewSkinBase<M, S, C extends Control, I extends Index
         // isSelected represents focus OR selection
         boolean isSelected = false;
         if (isFocusDriven) {
-            isSelected = firstVisibleCell.isFocused() || isCellFocused(firstVisibleCellIndex);
+            isSelected = isCellFocused(firstVisibleCellIndex);
         } else {
             isSelected = firstVisibleCell.isSelected() || isCellSelected(firstVisibleCellIndex);
         }
@@ -1010,17 +1010,10 @@ public abstract class TableViewSkinBase<M, S, C extends Control, I extends Index
     }
 
     private boolean isCellFocused(int row) {
-        TableFocusModel<S,TC> fm = (TableFocusModel<S,TC>)(Object)getFocusModel();
+        TableFocusModel<S,TC> fm = (TableFocusModel<S,TC>) getFocusModel();
         if (fm == null) return false;
 
-        int columnCount = getVisibleLeafColumns().size();
-        for (int col = 0; col < columnCount; col++) {
-            if (fm.isFocused(row, TableSkinUtils.getVisibleLeafColumn(this,col))) {
-                return true;
-            }
-        }
-
-        return false;
+        return fm.isFocused(row);
     }
 
 

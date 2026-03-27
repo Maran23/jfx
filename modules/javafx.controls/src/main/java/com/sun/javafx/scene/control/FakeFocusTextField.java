@@ -24,6 +24,7 @@
  */
 package com.sun.javafx.scene.control;
 
+import com.sun.javafx.scene.NodeHelper;
 import javafx.scene.AccessibleAttribute;
 import javafx.scene.control.TextField;
 
@@ -35,8 +36,15 @@ public final class FakeFocusTextField extends TextField {
         }
     }
 
+    @Override
+    public void requestFocusVisible() {
+        if (getParent() != null) {
+            getParent().requestFocusVisible();
+        }
+    }
+
     public void setFakeFocus(boolean b) {
-        setFocused(b);
+        NodeHelper.setFakeFocus(this, b);
     }
 
     /** {@inheritDoc} */

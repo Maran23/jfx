@@ -643,6 +643,12 @@ public abstract sealed class Node
             }
 
             @Override
+            public void setFakeFocus(Node node, boolean focused) {
+                node.focused.set(focused);
+                node.focused.notifyListeners();
+            }
+
+            @Override
             public BooleanExpression treeVisibleProperty(Node node) {
                 return node.treeVisibleProperty();
             }
@@ -8433,6 +8439,19 @@ public abstract sealed class Node
         }
     };
 
+    /**
+     * @param value the new focused value
+     * @deprecated This method bypasses the JavaFX focus ownership system.
+     * As a result, multiple nodes in the scene tree can have focus, which invalidates certain assumptions
+     * about the focus system and causes {@link #focusWithin} to no longer work reliably.
+     * <br>
+     * Developers should call {@link #requestFocus()} instead.
+     * <br>
+     * If focus should be 'faked' without actually requesting focus,
+     * developers can toggle the pseudoclass instead with:
+     * <code>pseudoClassStateChanged(PseudoClass.getPseudoClass("focused"), isFocused);</code>
+     */
+    @Deprecated(forRemoval = true, since = "27")
     protected final void setFocused(boolean value) {
         setFocusQuietly(value, false);
         notifyFocusListeners();
@@ -8612,7 +8631,7 @@ public abstract sealed class Node
      * Requests focus as if by calling {@link #requestFocus()}, and additionally
      * sets the {@link #focusVisible} flag.
      */
-    private void requestFocusVisible() {
+    public void requestFocusVisible() {
         if (getScene() != null) {
             getScene().requestFocus(this, true);
         }

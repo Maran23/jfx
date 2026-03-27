@@ -101,4 +101,9 @@ public class NodeShim {
     public static void completeTransitionTimers(Node n) {
         n.completeTransitionTimers();
     }
+
+    public static void setFocus(Node n, boolean focused) {
+        n.setFocusQuietly(focused, false);
+        n.notifyFocusListeners();
+    }
 }

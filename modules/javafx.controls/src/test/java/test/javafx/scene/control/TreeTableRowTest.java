@@ -46,6 +46,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
+import test.com.sun.javafx.scene.control.infrastructure.ControlTestUtils;
 import test.com.sun.javafx.scene.control.infrastructure.StageLoader;
 
 public class TreeTableRowTest {
@@ -477,28 +478,27 @@ public class TreeTableRowTest {
         cell.updateTreeTableView(tree);
         cell.updateIndex(0);
 
-        TreeTableCell<String,String> other = new TreeTableCell<>();
+        TreeTableRow<String> other = new TreeTableRow<>();
         other.updateTreeTableView(tree);
         other.updateIndex(1);
 
         tree.getFocusModel().focus(0);
-        assertTrue(cell.isFocused());
-        assertFalse(other.isFocused());
+        assertTrue(isFakeFocused(cell));
+        assertFalse(isFakeFocused(other));
     }
 
-    @Disabled // TODO file bug!
     @Test public void changesToFocusOnFocusModelAreReflectedInCells() {
         cell.updateTreeTableView(tree);
         cell.updateIndex(0);
 
-        TreeTableCell<String,String> other = new TreeTableCell<>();
+        TreeTableRow<String> other = new TreeTableRow<>();
         other.updateTreeTableView(tree);
         other.updateIndex(1);
 
         tree.getFocusModel().focus(0);
         tree.getFocusModel().focus(1);
-        assertFalse(cell.isFocused());
-        assertTrue(other.isFocused());
+        assertFalse(isFakeFocused(cell));
+        assertTrue(isFakeFocused(other));
     }
 
 //    @Test public void replacingTheFocusModelCausesFocusOnCellsToBeUpdated() {
@@ -1018,4 +1018,9 @@ public class TreeTableRowTest {
             assertEquals(1, cell.getIndex());
         }
     }
+
+    private static boolean isFakeFocused(TreeTableRow<String> cell) {
+        return ControlTestUtils.isFakeFocused(cell);
+    }
+
 }

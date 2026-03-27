@@ -33,22 +33,34 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.time.LocalDate;
 import javafx.beans.property.BooleanProperty;
 import javafx.beans.property.SimpleBooleanProperty;
+import javafx.scene.AccessibleAttribute;
 import javafx.scene.Group;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.CellShim;
 import javafx.scene.control.DateCell;
 import javafx.stage.Stage;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import com.sun.javafx.tk.Toolkit;
 import test.com.sun.javafx.scene.control.infrastructure.ControlTestUtils;
+import test.com.sun.javafx.scene.control.infrastructure.StageLoader;
 
 public class DateCellTest {
     private DateCell cell;
     private Class type;
     private final LocalDate today = LocalDate.now();
     private final LocalDate tomorrow = today.plusDays(1);
+
+    private StageLoader stageLoader;
+
+    @AfterEach
+    public void cleanup() {
+        if (stageLoader != null) {
+            stageLoader.dispose();
+        }
+    }
 
     @BeforeEach
     public void setup() throws Exception {
@@ -339,4 +351,19 @@ public class DateCellTest {
         assertFalse(cell.isEditing());
         stage.hide();
     }
+
+    @Test
+    void testTextQueryAccessibleAttribute() {
+        stageLoader = new StageLoader(cell);
+
+        String text = "Text";
+        cell.setText(text);
+        Object result = cell.queryAccessibleAttribute(AccessibleAttribute.TEXT);
+        assertEquals("", result);
+
+        cell.requestFocus();
+        result = cell.queryAccessibleAttribute(AccessibleAttribute.TEXT);
+        assertEquals(text, result);
+    }
+
 }

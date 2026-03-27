@@ -202,6 +202,8 @@ public class SpinnerSkin<T> extends SkinBase<Spinner<T>> {
             }
         });
 
+        textField.focusTraversableProperty().bind(control.editableProperty());
+
         // This event filter is to enable keyboard events being delivered to the
         // spinner when the user has mouse clicked into the TextField area of the
         // Spinner control. Without this the up/down/left/right arrow keys don't
@@ -214,43 +216,7 @@ public class SpinnerSkin<T> extends SkinBase<Spinner<T>> {
             }
         });
 
-        lh.addChangeListener(textField.focusedProperty(), (op) -> {
-            boolean hasFocus = textField.isFocused();
-            // Fix for JDK-8115009
-            control.getProperties().put("FOCUSED", hasFocus);
-            // --- end of JDK-8115009
-
-            // JDK-8120120 starts here
-            if (! hasFocus) {
-                pseudoClassStateChanged(CONTAINS_FOCUS_PSEUDOCLASS_STATE, false);
-            } else {
-                pseudoClassStateChanged(CONTAINS_FOCUS_PSEUDOCLASS_STATE, true);
-            }
-            // --- end of JDK-8120120
-        });
-
         // end of comboBox-esque fixes
-
-        textField.focusTraversableProperty().bind(control.editableProperty());
-
-        // Following code borrowed from ComboBoxPopupControl, to resolve the
-        // issue initially identified in JDK-8094715, but specifically (for Spinner)
-        // identified in JDK-8092584
-        ParentHelper.setTraversalEngine(control,
-                new ParentTraversalEngine(control, new Algorithm() {
-
-            @Override public Node select(Node owner, Direction dir, TraversalContext context) {
-                return null;
-            }
-
-            @Override public Node selectFirst(TraversalContext context) {
-                return null;
-            }
-
-            @Override public Node selectLast(TraversalContext context) {
-                return null;
-            }
-        }));
 
         lh.addChangeListener(control.sceneProperty(), (op) -> {
             // Stop spinning when sceneProperty is modified
@@ -271,6 +237,25 @@ public class SpinnerSkin<T> extends SkinBase<Spinner<T>> {
 
     @Override
     public void install() {
+        // Following code borrowed from ComboBoxPopupControl, to resolve the
+        // issue initially identified in JDK-8094715, but specifically (for Spinner)
+        // identified in JDK-8092584
+        ParentHelper.setTraversalEngine(getSkinnable(),
+                new ParentTraversalEngine(getSkinnable(), new Algorithm() {
+
+                    @Override public Node select(Node owner, Direction dir, TraversalContext context) {
+                        return null;
+                    }
+
+                    @Override public Node selectFirst(TraversalContext context) {
+                        return null;
+                    }
+
+                    @Override public Node selectLast(TraversalContext context) {
+                        return null;
+                    }
+                }));
+
         // when replacing the skin, the textField (which comes from the control), must first be uninstalled
         // by the old skin in its dispose(), followed by (re-)adding it here.
         getChildren().add(textField);

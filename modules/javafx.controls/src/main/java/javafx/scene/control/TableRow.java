@@ -302,8 +302,16 @@ public class TableRow<T> extends IndexedCell<T> {
         TableView.TableViewFocusModel<T> fm = table.getFocusModel();
         if (sm == null || fm == null) return;
 
-        boolean isFocused = ! sm.isCellSelectionEnabled() && fm.isFocused(getIndex());
-        setFocused(isFocused);
+        boolean isFocused = !sm.isCellSelectionEnabled() && fm.isFocused(getIndex());
+        setSubFocused(isFocused);
+    }
+
+    @Override
+    void fireAccessibleFocusItemChanged() {
+        TableView<T> tableView = getTableView();
+        if (tableView != null) {
+            tableView.notifyAccessibleAttributeChanged(AccessibleAttribute.FOCUS_ITEM);
+        }
     }
 
     private void updateEditing() {

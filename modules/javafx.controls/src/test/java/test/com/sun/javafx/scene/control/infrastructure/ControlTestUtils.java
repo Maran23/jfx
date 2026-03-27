@@ -36,12 +36,14 @@ import javafx.beans.value.ObservableValue;
 import javafx.collections.ListChangeListener;
 import javafx.collections.ObservableList;
 import javafx.css.PseudoClass;
+import javafx.scene.Node;
 import javafx.scene.chart.Axis;
 import javafx.scene.control.Control;
 import javafx.scene.control.MenuItem;
 import javafx.scene.control.Pagination;
 import javafx.scene.control.PopupControl;
 import javafx.scene.control.Tab;
+import javafx.scene.control.TreeCell;
 import test.com.sun.javafx.binding.ExpressionHelperUtility;
 
 public final class ControlTestUtils {
@@ -235,6 +237,10 @@ public final class ControlTestUtils {
     // methods for temporary setting UncaughtExceptionHandler
     public static ExceptionHandler setHandler() {
         return new ExceptionHandler();
+    }
+
+    public static boolean isFakeFocused(Node node) {
+        return node.getPseudoClassStates().contains(PseudoClass.getPseudoClass("focused"));
     }
 
     public static class ExceptionHandler implements Thread.UncaughtExceptionHandler {

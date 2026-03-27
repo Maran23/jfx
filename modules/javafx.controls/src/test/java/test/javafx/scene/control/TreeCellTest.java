@@ -63,6 +63,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import com.sun.javafx.tk.Toolkit;
+import test.com.sun.javafx.scene.control.infrastructure.ControlTestUtils;
 import test.com.sun.javafx.scene.control.infrastructure.StageLoader;
 import test.com.sun.javafx.scene.control.infrastructure.VirtualFlowTestUtils;
 
@@ -495,8 +496,8 @@ public class TreeCellTest {
         other.updateIndex(1);
 
         tree.getFocusModel().focus(0);
-        assertTrue(cell.isFocused());
-        assertFalse(other.isFocused());
+        assertTrue(isFakeFocused(cell));
+        assertFalse(isFakeFocused(other));
     }
 
     @Test public void changesToFocusOnFocusModelAreReflectedInCells() {
@@ -509,8 +510,8 @@ public class TreeCellTest {
 
         tree.getFocusModel().focus(0);
         tree.getFocusModel().focus(1);
-        assertFalse(cell.isFocused());
-        assertTrue(other.isFocused());
+        assertFalse(isFakeFocused(cell));
+        assertTrue(isFakeFocused(other));
     }
 
     @Test public void replacingTheFocusModelCausesFocusOnCellsToBeUpdated() {
@@ -529,8 +530,8 @@ public class TreeCellTest {
         focusModel.focus(1);
 
         tree.setFocusModel(focusModel);
-        assertFalse(cell.isFocused());
-        assertTrue(other.isFocused());
+        assertFalse(isFakeFocused(cell));
+        assertTrue(isFakeFocused(other));
     }
 
     @Test public void replaceANullFocusModel() {
@@ -549,8 +550,8 @@ public class TreeCellTest {
         focusModel.focus(1);
 
         tree.setFocusModel(focusModel);
-        assertFalse(cell.isFocused());
-        assertTrue(other.isFocused());
+        assertFalse(isFakeFocused(cell));
+        assertTrue(isFakeFocused(other));
     }
 
     @Test public void setANullFocusModel() {
@@ -1113,5 +1114,9 @@ public class TreeCellTest {
         cell.updateIndex(0);
 
         assertTrue(isItemChangedCalled.get());
+    }
+
+    private static boolean isFakeFocused(TreeCell<String> cell) {
+        return ControlTestUtils.isFakeFocused(cell);
     }
 }

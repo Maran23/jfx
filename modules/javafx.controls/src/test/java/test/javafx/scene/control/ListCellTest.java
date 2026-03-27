@@ -60,6 +60,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import com.sun.javafx.tk.Toolkit;
+import test.com.sun.javafx.scene.control.infrastructure.ControlTestUtils;
 import test.com.sun.javafx.scene.control.infrastructure.StageLoader;
 import test.com.sun.javafx.scene.control.infrastructure.VirtualFlowTestUtils;
 
@@ -546,8 +547,8 @@ public class ListCellTest {
         other.updateIndex(1);
 
         list.getFocusModel().focus(0);
-        assertTrue(cell.isFocused());
-        assertFalse(other.isFocused());
+        assertTrue(isFakeFocused(cell));
+        assertFalse(isFakeFocused(other));
     }
 
     @Test public void changesToFocusOnFocusModelAreReflectedInCells() {
@@ -560,8 +561,8 @@ public class ListCellTest {
 
         list.getFocusModel().focus(0);
         list.getFocusModel().focus(1);
-        assertFalse(cell.isFocused());
-        assertTrue(other.isFocused());
+        assertFalse(isFakeFocused(cell));
+        assertTrue(isFakeFocused(other));
     }
 
     @Test public void replacingTheFocusModelCausesFocusOnCellsToBeUpdated() {
@@ -580,8 +581,8 @@ public class ListCellTest {
         focusModel.focus(1);
 
         list.setFocusModel(focusModel);
-        assertFalse(cell.isFocused());
-        assertTrue(other.isFocused());
+        assertFalse(isFakeFocused(cell));
+        assertTrue(isFakeFocused(other));
     }
 
     @Test public void replaceANullFocusModel() {
@@ -600,8 +601,8 @@ public class ListCellTest {
         focusModel.focus(1);
 
         list.setFocusModel(focusModel);
-        assertFalse(cell.isFocused());
-        assertTrue(other.isFocused());
+        assertFalse(isFakeFocused(cell));
+        assertTrue(isFakeFocused(other));
     }
 
     @Test public void setANullFocusModel() {
@@ -616,8 +617,8 @@ public class ListCellTest {
 
         // Replace with a null focus model, which should clear focused
         list.setFocusModel(null);
-        assertFalse(cell.isFocused());
-        assertFalse(other.isFocused());
+        assertFalse(isFakeFocused(cell));
+        assertFalse(isFakeFocused(other));
     }
 
     @Test public void replacingTheFocusModelRemovesTheListenerFromTheOldModel() {
@@ -1183,6 +1184,10 @@ public class ListCellTest {
         cell.updateIndex(0);
 
         assertTrue(isItemChangedCalled.get());
+    }
+
+    private static boolean isFakeFocused(ListCell<String> cell) {
+        return ControlTestUtils.isFakeFocused(cell);
     }
 
     public static class MisbehavingOnCancelListCell<T> extends ListCell<T> {

@@ -1997,7 +1997,7 @@ public class ComboBoxTest {
         assertEquals(cb, scene.getFocusOwner());
     }
 
-    @Test public void test_rt36902() {
+    @Test public void testTraversalDoesNotFocusFakeFocusTextField() {
         final ComboBox<String> cb1 = new ComboBox<>(FXCollections.observableArrayList("a", "b", "c"));
         final ComboBox<String> cb2 = new ComboBox<>(FXCollections.observableArrayList("a", "b", "c"));
         cb2.setEditable(true);
@@ -2019,13 +2019,13 @@ public class ComboBoxTest {
 
         // move focus forward to cb2
         cb1Keyboard.doKeyPress(KeyCode.TAB);
-        assertTrue(cb2.isFocused());
-        assertEquals(cb2, scene.getFocusOwner());
+        assertTrue(cb2.isFocused(), "Expect cb2 to be focused, but actual focus owner is: " + scene.getFocusOwner());
+        assertEquals(cb2, scene.getFocusOwner(), "Expect cb2 to be focused, but actual focus owner is: " + scene.getFocusOwner());
 
         // move focus forward again to cb1
         cb2Keyboard.doKeyPress(KeyCode.TAB);
-        assertTrue(cb1.isFocused());
-        assertEquals(cb1, scene.getFocusOwner());
+        assertTrue(cb1.isFocused(), "Expect cb1 to be focused, but actual focus owner is: " + scene.getFocusOwner());
+        assertEquals(cb1, scene.getFocusOwner(), "Expect cb1 to be focused, but actual focus owner is: " + scene.getFocusOwner());
 
         // now start going backwards with shift-tab.
         // The first half of the bug is here - when we shift-tab into cb2, we

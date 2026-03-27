@@ -25,8 +25,7 @@
 
 package javafx.scene.control;
 
-import javafx.beans.InvalidationListener;
-import javafx.beans.Observable;
+import com.sun.javafx.scene.control.skin.Utils;
 import javafx.beans.property.BooleanProperty;
 import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.SimpleBooleanProperty;
@@ -353,27 +352,16 @@ public class Cell<T> extends Labeled {
         ((StyleableProperty<Boolean>)focusTraversableProperty()).applyStyle(null, Boolean.FALSE);
         getStyleClass().addAll(DEFAULT_STYLE_CLASS);
 
-        /**
+        /*
          * Indicates whether or not this cell has focus. For example, a
          * ListView defines zero or one cell as being the "focused" cell. This cell
          * would have focused set to true.
          */
-        super.focusedProperty().addListener(new InvalidationListener() {
-            @Override public void invalidated(Observable property) {
-                pseudoClassStateChanged(PSEUDO_CLASS_FOCUSED, isFocused()); // TODO is this necessary??
-
-                // The user has shifted focus, so we should cancel the editing on this cell
-                if (!isFocused() && isEditing()) {
-                    cancelEdit();
-                }
-            }
-        });
+        focusedProperty().addListener(_ -> onFocusChanged(isFocused()));
 
         // initialize default pseudo-class state
         pseudoClassStateChanged(PSEUDO_CLASS_EMPTY, true);
     }
-
-
 
     /* *************************************************************************
      *                                                                         *
@@ -710,6 +698,28 @@ public class Cell<T> extends Labeled {
         if (wasSelected != selected) {
             markCellDirty();
         }
+    }
+
+    void setSubFocused(boolean value) {
+        if (Utils.isFakeFocused(this) == value) {
+            return;
+        }
+
+        Utils.setFakeFocused(this, value);
+
+        onFocusChanged(value);
+    }
+
+    private void onFocusChanged(boolean focused) {
+        // The user has shifted focus, so we should cancel the editing on this cell
+        if (!focused && isEditing()) {
+            cancelEdit();
+        }
+        fireAccessibleFocusItemChanged();
+    }
+
+    void fireAccessibleFocusItemChanged() {
+        // noop
     }
 
     /**

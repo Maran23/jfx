@@ -134,6 +134,9 @@ public abstract class NodeHelper {
         getHelper(node).processCSSImpl(node);
     }
 
+    public static void setFakeFocus(Node node, boolean focused) {
+        getHelper(node).setFakeFocusImpl(node, focused);
+    }
     /*
      * Methods that will be overridden by subclasses
      */
@@ -179,6 +182,10 @@ public abstract class NodeHelper {
 
     protected void processCSSImpl(Node node) {
         nodeAccessor.doProcessCSS(node);
+    }
+
+    protected void setFakeFocusImpl(Node node, boolean focused) {
+        nodeAccessor.setFakeFocus(node, focused);
     }
 
     /*
@@ -431,6 +438,8 @@ public abstract class NodeHelper {
         void removeTransitionTimer(Node node, String propertyName);
         TransitionTimer findTransitionTimer(Node node, String propertyName);
         MediaQueryContext getMediaQueryContext(Node node);
+
+        void setFakeFocus(Node node, boolean focused);
     }
 
 }

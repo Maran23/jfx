@@ -25,6 +25,7 @@
 
 package com.sun.javafx.webkit.theme;
 
+import com.sun.javafx.scene.NodeHelper;
 import javafx.beans.InvalidationListener;
 import javafx.beans.Observable;
 import javafx.collections.FXCollections;
@@ -436,7 +437,7 @@ public final class RenderThemeImpl extends RenderTheme {
 
         @Override public void setState(int state) {
             setDisabled(! hasState(state, RenderTheme.ENABLED));
-            setFocused(hasState(state, RenderTheme.FOCUSED));
+            NodeHelper.setFakeFocus(this, hasState(state, RenderTheme.FOCUSED));
             setHover(hasState(state, RenderTheme.HOVERED) && !isDisabled());
             setPressed(hasState(state, RenderTheme.PRESSED));
             if (isPressed()) arm(); else disarm();
@@ -456,7 +457,7 @@ public final class RenderThemeImpl extends RenderTheme {
         @Override public void setState(int state) {
             setDisabled(! hasState(state, RenderTheme.ENABLED));
             setEditable(hasState(state, RenderTheme.READ_ONLY));
-            setFocused(hasState(state, RenderTheme.FOCUSED));
+            NodeHelper.setFakeFocus(this, hasState(state, RenderTheme.FOCUSED));
             setHover(hasState(state, RenderTheme.HOVERED) && !isDisabled());
         }
 
@@ -469,7 +470,7 @@ public final class RenderThemeImpl extends RenderTheme {
 
         @Override public void setState(int state) {
             setDisabled(! hasState(state, RenderTheme.ENABLED));
-            setFocused(hasState(state, RenderTheme.FOCUSED));
+            NodeHelper.setFakeFocus(this, hasState(state, RenderTheme.FOCUSED));
             setHover(hasState(state, RenderTheme.HOVERED) && !isDisabled());
             setSelected(hasState(state, RenderTheme.CHECKED));
         }
@@ -483,7 +484,7 @@ public final class RenderThemeImpl extends RenderTheme {
 
         @Override public void setState(int state) {
             setDisabled(! hasState(state, RenderTheme.ENABLED));
-            setFocused(hasState(state, RenderTheme.FOCUSED));
+            NodeHelper.setFakeFocus(this, hasState(state, RenderTheme.FOCUSED));
             setHover(hasState(state, RenderTheme.HOVERED) && !isDisabled());
             setSelected(hasState(state, RenderTheme.CHECKED));
         }
@@ -497,7 +498,7 @@ public final class RenderThemeImpl extends RenderTheme {
 
         @Override public void setState(int state) {
             setDisabled(! hasState(state, RenderTheme.ENABLED));
-            setFocused(hasState(state, RenderTheme.FOCUSED));
+            NodeHelper.setFakeFocus(this, hasState(state, RenderTheme.FOCUSED));
             setHover(hasState(state, RenderTheme.HOVERED) && !isDisabled());
         }
 
@@ -515,7 +516,7 @@ public final class RenderThemeImpl extends RenderTheme {
 
         @Override public void setState(int state) {
             setDisabled(! hasState(state, RenderTheme.ENABLED));
-            setFocused(hasState(state, RenderTheme.FOCUSED));
+            NodeHelper.setFakeFocus(this, hasState(state, RenderTheme.FOCUSED));
             setHover(hasState(state, RenderTheme.HOVERED) && !isDisabled());
         }
 
@@ -535,7 +536,7 @@ public final class RenderThemeImpl extends RenderTheme {
 
         @Override public void setState(int state) {
             setDisabled(! hasState(state, RenderTheme.ENABLED));
-            setFocused(hasState(state, RenderTheme.FOCUSED));
+            NodeHelper.setFakeFocus(this, hasState(state, RenderTheme.FOCUSED));
             setHover(hasState(state, RenderTheme.HOVERED) && !isDisabled());
         }
 

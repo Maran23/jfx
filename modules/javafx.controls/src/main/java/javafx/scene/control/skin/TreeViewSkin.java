@@ -545,7 +545,7 @@ public class TreeViewSkin<T> extends VirtualContainerBase<TreeView<T>, TreeCell<
         // isSelected represents focus OR selection
         boolean isSelected = false;
         if (isFocusDriven) {
-            isSelected = lastVisibleCell.isFocused() || fm.isFocused(lastVisibleCellIndex);
+            isSelected = fm.isFocused(lastVisibleCellIndex);
         } else {
             isSelected = lastVisibleCell.isSelected() || sm.isSelected(lastVisibleCellIndex);
         }
@@ -589,7 +589,7 @@ public class TreeViewSkin<T> extends VirtualContainerBase<TreeView<T>, TreeCell<
         // isSelected represents focus OR selection
         boolean isSelected = false;
         if (isFocusDriven) {
-            isSelected = firstVisibleCell.isFocused() || fm.isFocused(firstVisibleCellIndex);
+            isSelected = fm.isFocused(firstVisibleCellIndex);
         } else {
             isSelected = firstVisibleCell.isSelected() || sm.isSelected(firstVisibleCellIndex);
         }

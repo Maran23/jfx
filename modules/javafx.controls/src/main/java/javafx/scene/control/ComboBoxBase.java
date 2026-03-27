@@ -34,7 +34,6 @@ import javafx.beans.property.SimpleBooleanProperty;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.beans.property.StringProperty;
-import javafx.collections.MapChangeListener;
 import javafx.css.PseudoClass;
 import javafx.event.ActionEvent;
 import javafx.event.Event;
@@ -128,17 +127,6 @@ public abstract class ComboBoxBase<T> extends Control {
      */
     public ComboBoxBase() {
         getStyleClass().add(DEFAULT_STYLE_CLASS);
-
-        // Fix for JDK-8115009
-        getProperties().addListener((MapChangeListener<Object, Object>) change -> {
-            if (change.wasAdded()) {
-                if (change.getKey() == "FOCUSED") {
-                    setFocused((Boolean)change.getValueAdded());
-                    getProperties().remove("FOCUSED");
-                }
-            }
-        });
-        // End of fix for JDK-8115009
     }
 
     /* *************************************************************************
@@ -492,4 +480,3 @@ public abstract class ComboBoxBase<T> extends Control {
         }
     }
 }
-

@@ -30,6 +30,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.util.concurrent.atomic.AtomicBoolean;
 import javafx.geometry.Point2D;
+import javafx.scene.NodeShim;
 import javafx.scene.control.PasswordField;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
@@ -107,13 +108,13 @@ public class TextInputControlSkinTest {
 
     public class FocusableTextField extends TextField {
         public void setFocus(boolean value) {
-            super.setFocused(value);
+            NodeShim.setFocus(this, value);
         }
     }
 
     public class FocusableTextArea extends TextArea {
         public void setFocus(boolean value) {
-            super.setFocused(value);
+            NodeShim.setFocus(this, value);
         }
     }
 }

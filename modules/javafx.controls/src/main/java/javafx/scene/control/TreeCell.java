@@ -575,11 +575,20 @@ public class TreeCell<T> extends IndexedCell<T> {
 
         FocusModel<TreeItem<T>> fm = getTreeView().getFocusModel();
         if (fm == null) {
-            setFocused(false);
+            setSubFocused(false);
             return;
         }
 
-        setFocused(fm.isFocused(getIndex()));
+        boolean focused = fm.isFocused(getIndex());
+        setSubFocused(focused);
+    }
+
+    @Override
+    void fireAccessibleFocusItemChanged() {
+        TreeView<T> treeView = getTreeView();
+        if (treeView != null) {
+            treeView.notifyAccessibleAttributeChanged(AccessibleAttribute.FOCUS_ITEM);
+        }
     }
 
     private boolean updateEditingIndex = true;

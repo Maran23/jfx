@@ -28,6 +28,7 @@ package test.javafx.scene;
 import com.sun.javafx.scene.SceneHelper;
 import javafx.event.Event;
 import javafx.event.EventTarget;
+import javafx.scene.NodeShim;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
 import test.com.sun.javafx.pgstub.StubScene;
@@ -1018,7 +1019,7 @@ public class FocusTest {
             }
 
             void setFocused() {
-                setFocused(true);
+                NodeShim.setFocus(this, true);
             }
         }
 
@@ -1070,7 +1071,7 @@ public class FocusTest {
     @Test public void testMultiLevelFocusWithinIsPreservedWhenIntermediateFocusedNodeIsDefocused() {
         class N extends Group {
             N(Node... children) { super(children); }
-            void _setFocused(boolean value) { setFocused(value); }
+            void _setFocused(boolean value) { NodeShim.setFocus(this, value); }
         }
 
         N node1, node2, node3, node4;
@@ -1107,7 +1108,7 @@ public class FocusTest {
     @Test public void testFocusWithinBitsAreSetOnParentsWhenAddedNodeIsAlreadyFocused() {
         class N extends Group {
             N(Node... children) { super(children); }
-            void _setFocused(boolean value) { setFocused(value); }
+            void _setFocused(boolean value) { NodeShim.setFocus(this, value); }
         }
 
         N node1, node2, node3 = new N();
@@ -1131,7 +1132,7 @@ public class FocusTest {
     @Test public void testFocusWithinBitsAreSetAndClearedOnParentsOfNodeContainingMultipleFocuses() {
         class N extends Group {
             N(Node... children) { super(children); }
-            void _setFocused(boolean value) { setFocused(value); }
+            void _setFocused(boolean value) { NodeShim.setFocus(this, value); }
         }
 
         N node1, node2, node3, node4;
