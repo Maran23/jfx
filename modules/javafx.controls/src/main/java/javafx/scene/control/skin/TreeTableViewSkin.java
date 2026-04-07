@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,7 +27,6 @@ package javafx.scene.control.skin;
 
 import java.util.ArrayList;
 import java.util.List;
-import javafx.beans.property.ObjectProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.event.EventHandler;
@@ -47,7 +46,6 @@ import javafx.scene.control.TreeTableView;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.StackPane;
 import com.sun.javafx.scene.control.ListenerHelper;
-import com.sun.javafx.scene.control.TreeTableViewBackingList;
 import com.sun.javafx.scene.control.behavior.TreeTableViewBehavior;
 
 /**
@@ -65,11 +63,8 @@ public class TreeTableViewSkin<T> extends TableViewSkinBase<T, TreeItem<T>, Tree
      *                                                                         *
      **************************************************************************/
 
-    TreeTableViewBackingList<T> tableBackingList;
-    ObjectProperty<ObservableList<TreeItem<T>>> tableBackingListProperty;
     private final TreeTableViewBehavior<T>  behavior;
     private final EventHandler<TreeItem.TreeModificationEvent<T>> rootListener;
-    private boolean treeStructureDirty;
 
 
     /* *************************************************************************
@@ -125,6 +120,8 @@ public class TreeTableViewSkin<T> extends TableViewSkinBase<T, TreeItem<T>, Tree
         behavior.setOnHorizontalUnitScroll(this::horizontalUnitScroll);
         behavior.setOnVerticalUnitScroll(this::verticalUnitScroll);
 
+        // As of now, we are requesting a whole rebuild for pretty much all operations.
+        // This can be improved in the future by using the dirty cell API as used in e.g., ListView.
         rootListener = (ch) -> {
             if (ch.wasAdded() && ch.wasRemoved() && ch.getAddedSize() == ch.getRemovedSize()) {
                 // Fix for JDK-8114432, where the children of a TreeItem were changing,
@@ -132,8 +129,7 @@ public class TreeTableViewSkin<T> extends TableViewSkinBase<T, TreeItem<T>, Tree
                 // no event being fired to the skin to be informed that the items
                 // had changed. So, here we just watch for the case where the number
                 // of items being added is equal to the number of items being removed.
-                markItemCountDirty();
-                control.requestLayout();
+                requestRebuildCells();
             } else if (ch.getEventType().equals(TreeItem.valueChangedEvent())) {
                 // Fix for JDK-8114657 and JDK-8114610.
                 requestRebuildCells();
@@ -143,13 +139,7 @@ public class TreeTableViewSkin<T> extends TableViewSkinBase<T, TreeItem<T>, Tree
                 EventType<?> eventType = ch.getEventType();
                 while (eventType != null) {
                     if (eventType.equals(TreeItem.<T>expandedItemCountChangeEvent())) {
-                        markItemCountDirty();
-                        control.requestLayout();
-                        break;
-                    } else if (eventType.equals(TreeItem.<T>childrenModificationEvent())) {
-                        markItemCountDirty();
-                        treeStructureDirty = true;
-                        control.requestLayout();
+                        markItemCountDirtyAndRequestLayout();
                         break;
                     }
                     eventType = eventType.getSuperType();
@@ -157,7 +147,7 @@ public class TreeTableViewSkin<T> extends TableViewSkinBase<T, TreeItem<T>, Tree
             }
 
             // fix for JDK-8094887
-            control.edit(-1, null);
+            getSkinnable().edit(-1, null);
         };
 
         lh.addChangeListener(control.rootProperty(), true, (src, prev, root) -> {
@@ -168,13 +158,10 @@ public class TreeTableViewSkin<T> extends TableViewSkinBase<T, TreeItem<T>, Tree
                 root.addEventHandler(TreeItem.<T>treeNotificationEvent(), rootListener);
             }
             // fix for JDK-8094887
-            control.edit(-1, null);
+            getSkinnable().edit(-1, null);
 
-            if (root == null || root.getValue() == null) {
-                requestRebuildCells();
-            }
-
-            updateItemCount();
+            requestRebuildCells();
+            markItemCountDirtyAndRequestLayout();
         });
 
         lh.addChangeListener(control.showRootProperty(), (ev) -> {
@@ -188,11 +175,7 @@ public class TreeTableViewSkin<T> extends TableViewSkinBase<T, TreeItem<T>, Tree
                 }
             }
             // update the item count in the flow and behavior instances
-            updateItemCount();
-        });
-
-        lh.addChangeListener(control.expandedItemCountProperty(), (ev) -> {
-            markItemCountDirty();
+            markItemCountDirtyAndRequestLayout();
         });
 
         lh.addChangeListener(control.fixedCellSizeProperty(), (ev) -> {
@@ -329,35 +312,6 @@ public class TreeTableViewSkin<T> extends TableViewSkinBase<T, TreeItem<T>, Tree
         super.horizontalScroll();
         if (getSkinnable().getFixedCellSize() > 0) {
             flow.requestCellLayout();
-        }
-    }
-
-    /** {@inheritDoc} */
-    @Override protected void updateItemCount() {
-        updatePlaceholderRegionVisibility();
-
-        tableBackingList.resetSize();
-
-        int oldCount = flow.getCellCount();
-        int newCount = getItemCount();
-
-        // if this is not called even when the count is the same, we get a
-        // memory leak in VirtualFlow.sheet.children. This can probably be
-        // optimised in the future when time permits.
-        flow.setCellCount(newCount);
-
-        if (newCount != oldCount) {
-            // The following line is (perhaps temporarily) disabled to
-            // resolve two issues: JDK-8155798 and JDK-8147483.
-            // A unit test exists in TreeTableViewTest to ensure that
-            // the performance issue covered in JDK-8147483 doesn't regress.
-            // requestRebuildCells();
-            treeStructureDirty = false;
-        } else if (treeStructureDirty) {
-            requestRebuildCells();
-            treeStructureDirty = false;
-        } else {
-            needCellsReconfigured = true;
         }
     }
 

@@ -1104,19 +1104,11 @@ public class VirtualFlow<T extends IndexedCell> extends Region {
             lastHeight = -1;
         }
 
-        if (! dirtyCells.isEmpty()) {
-            int index;
-            final int cellsSize = cells.size();
-            while ((index = dirtyCells.nextSetBit(0)) != -1 && index < cellsSize) {
-                T cell = cells.get(index);
-                // updateIndex(-1) works for TableView, but breaks ListView.
-                // For now, the TableView just does not use the dirtyCells API
-//                cell.updateIndex(-1);
-                if (cell != null) {
-                    cell.requestLayout();
-                }
-                dirtyCells.clear(index);
+        if (!dirtyCells.isEmpty()) {
+            if (!needsRebuildCells && !needsRecreateCells && !cells.isEmpty()) {
+                resetDirtyCellIndices();
             }
+            dirtyCells.clear();
 
             setMaxPrefBreadth(-1);
             lastWidth = -1;
@@ -1361,6 +1353,17 @@ public class VirtualFlow<T extends IndexedCell> extends Region {
         lastPosition = getPosition();
         recalculateEstimatedSize();
         cleanPile();
+    }
+
+    private void resetDirtyCellIndices() {
+        int first = getCellIndex(cells.getFirst());
+        int last = getCellIndex(cells.getLast());
+
+        for (int index = dirtyCells.nextSetBit(first); index != -1 && index <= last;
+             index = dirtyCells.nextSetBit(index + 1)) {
+            T cell = getVisibleCell(index);
+            cell.updateIndex(-1);
+        }
     }
 
     /**

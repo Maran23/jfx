@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,7 +30,6 @@ import java.util.List;
 
 import javafx.application.Platform;
 import javafx.beans.InvalidationListener;
-import javafx.beans.Observable;
 import javafx.beans.WeakInvalidationListener;
 import javafx.beans.property.ReadOnlyObjectProperty;
 import javafx.beans.property.ReadOnlyObjectWrapper;
@@ -38,7 +37,6 @@ import javafx.beans.value.ChangeListener;
 import javafx.beans.value.ObservableValue;
 import javafx.beans.value.WeakChangeListener;
 import javafx.collections.ListChangeListener;
-import javafx.collections.ObservableList;
 import javafx.collections.WeakListChangeListener;
 import javafx.scene.AccessibleAction;
 import javafx.scene.AccessibleAttribute;
@@ -144,57 +142,6 @@ public class ListCell<T> extends IndexedCell<T> {
     };
 
     /**
-     * Listens to the items on the ListView. Whenever the items are changed in such a way that
-     * it impacts the index of this ListCell, then we must update the item.
-     */
-    private final ListChangeListener<T> itemsListener = c -> {
-        boolean doUpdate = false;
-        while (c.next()) {
-            // JDK-8091726: We only update the item in this cell if the current cell
-            // index is within the range of the change and certain changes to the
-            // list have occurred.
-            final int currentIndex = getIndex();
-            final ListView<T> lv = getListView();
-            final List<T> items = lv == null ? null : lv.getItems();
-            final int itemCount = items == null ? 0 : items.size();
-
-            final boolean indexAfterChangeFromIndex = currentIndex >= c.getFrom();
-            final boolean indexBeforeChangeToIndex = currentIndex < c.getTo() || currentIndex == itemCount;
-            final boolean indexInRange = indexAfterChangeFromIndex && indexBeforeChangeToIndex;
-
-            doUpdate = indexInRange || (indexAfterChangeFromIndex && !c.wasReplaced() && (c.wasRemoved() || c.wasAdded()));
-        }
-
-        if (doUpdate) {
-            updateItem(-1);
-        }
-    };
-
-    /**
-     * Listens to the items property on the ListView. Whenever the entire list is changed,
-     * we have to unhook the weakItemsListener and update the item.
-     */
-    private final InvalidationListener itemsPropertyListener = new InvalidationListener() {
-        private WeakReference<ObservableList<T>> weakItemsRef = new WeakReference<>(null);
-
-        @Override public void invalidated(Observable observable) {
-            ObservableList<T> oldItems = weakItemsRef.get();
-            if (oldItems != null) {
-                oldItems.removeListener(weakItemsListener);
-            }
-
-            ListView<T> listView = getListView();
-            ObservableList<T> items = listView == null ? null : listView.getItems();
-            weakItemsRef = new WeakReference<>(items);
-
-            if (items != null) {
-                items.addListener(weakItemsListener);
-            }
-            updateItem(-1);
-        }
-    };
-
-    /**
      * Listens to the focus model on the ListView. Whenever the focus model changes,
      * the focused property on the ListCell is updated
      */
@@ -224,8 +171,6 @@ public class ListCell<T> extends IndexedCell<T> {
     private final WeakInvalidationListener weakEditingListener = new WeakInvalidationListener(editingListener);
     private final WeakListChangeListener<Integer> weakSelectedListener = new WeakListChangeListener<>(selectedListener);
     private final WeakChangeListener<MultipleSelectionModel<T>> weakSelectionModelPropertyListener = new WeakChangeListener<>(selectionModelPropertyListener);
-    private final WeakListChangeListener<T> weakItemsListener = new WeakListChangeListener<>(itemsListener);
-    private final WeakInvalidationListener weakItemsPropertyListener = new WeakInvalidationListener(itemsPropertyListener);
     private final WeakInvalidationListener weakFocusedListener = new WeakInvalidationListener(focusedListener);
     private final WeakChangeListener<FocusModel<T>> weakFocusModelPropertyListener = new WeakChangeListener<>(focusModelPropertyListener);
 
@@ -267,15 +212,8 @@ public class ListCell<T> extends IndexedCell<T> {
                     fm.focusedIndexProperty().removeListener(weakFocusedListener);
                 }
 
-                // If the old items isn't null, unhook the listener
-                final ObservableList<T> items = oldListView.getItems();
-                if (items != null) {
-                    items.removeListener(weakItemsListener);
-                }
-
                 // Remove the listeners of the properties on ListView
                 oldListView.editingIndexProperty().removeListener(weakEditingListener);
-                oldListView.itemsProperty().removeListener(weakItemsPropertyListener);
                 oldListView.focusModelProperty().removeListener(weakFocusModelPropertyListener);
                 oldListView.selectionModelProperty().removeListener(weakSelectionModelPropertyListener);
             }
@@ -291,13 +229,7 @@ public class ListCell<T> extends IndexedCell<T> {
                     fm.focusedIndexProperty().addListener(weakFocusedListener);
                 }
 
-                final ObservableList<T> items = currentListView.getItems();
-                if (items != null) {
-                    items.addListener(weakItemsListener);
-                }
-
                 currentListView.editingIndexProperty().addListener(weakEditingListener);
-                currentListView.itemsProperty().addListener(weakItemsPropertyListener);
                 currentListView.focusModelProperty().addListener(weakFocusModelPropertyListener);
                 currentListView.selectionModelProperty().addListener(weakSelectionModelPropertyListener);
 
@@ -654,4 +586,3 @@ public class ListCell<T> extends IndexedCell<T> {
         }
     }
 }
-

@@ -77,7 +77,6 @@ import javafx.scene.input.KeyCode;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Rectangle;
-import javafx.scene.text.Font;
 import javafx.util.Callback;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -90,6 +89,7 @@ import com.sun.javafx.scene.control.inputmap.InputMap;
 import com.sun.javafx.scene.control.inputmap.InputMap.KeyMapping;
 import com.sun.javafx.scene.control.inputmap.KeyBinding;
 import com.sun.javafx.tk.Toolkit;
+import org.w3c.dom.css.Counter;
 import test.com.sun.javafx.scene.control.infrastructure.ControlSkinFactory;
 import test.com.sun.javafx.scene.control.infrastructure.KeyEventFirer;
 import test.com.sun.javafx.scene.control.infrastructure.KeyModifier;
@@ -584,33 +584,35 @@ public class ListViewTest {
         VirtualFlowTestUtils.assertRowsEmpty(list, 2, -1); // rows 2+ should be empty
     }
 
-    @Test public void test_rt22463() {
+    @Test public void testClearSetItemsShouldUpdateTheCells() {
         final ListView<RT_22463_Person> list = new ListView<>();
 
-        // before the change things display fine
         RT_22463_Person p1 = new RT_22463_Person();
-        p1.setId(1l);
+        p1.setId(1L);
         p1.setName("name1");
         RT_22463_Person p2 = new RT_22463_Person();
-        p2.setId(2l);
+        p2.setId(2L);
         p2.setName("name2");
 
         stageLoader = new StageLoader(list);
 
         list.setItems(FXCollections.observableArrayList(p1, p2));
+        Toolkit.getToolkit().firePulse();
+
         VirtualFlowTestUtils.assertCellTextEquals(list, 0, "name1");
         VirtualFlowTestUtils.assertCellTextEquals(list, 1, "name2");
 
-        // now we change the persons but they are still equal as the ID's don't
-        // change - but the items list is cleared so the cells should update
+        // Clear and Set all Items by the new ones. Cells should get updated.
         RT_22463_Person new_p1 = new RT_22463_Person();
-        new_p1.setId(1l);
+        new_p1.setId(1L);
         new_p1.setName("updated name1");
         RT_22463_Person new_p2 = new RT_22463_Person();
-        new_p2.setId(2l);
+        new_p2.setId(2L);
         new_p2.setName("updated name2");
         list.getItems().clear();
         list.setItems(FXCollections.observableArrayList(new_p1, new_p2));
+        Toolkit.getToolkit().firePulse();
+
         VirtualFlowTestUtils.assertCellTextEquals(list, 0, "updated name1");
         VirtualFlowTestUtils.assertCellTextEquals(list, 1, "updated name2");
     }
@@ -629,6 +631,8 @@ public class ListViewTest {
         stageLoader = new StageLoader(list);
 
         list.setItems(FXCollections.observableArrayList(p1, p2));
+        Toolkit.getToolkit().firePulse();
+
         VirtualFlowTestUtils.assertCellTextEquals(list, 0, "name1");
         VirtualFlowTestUtils.assertCellTextEquals(list, 1, "name2");
 
@@ -639,7 +643,42 @@ public class ListViewTest {
         RT_22463_Person newP2 = new RT_22463_Person();
         newP2.setId(2L);
         newP2.setName("updated name2");
+        list.getItems().setAll(FXCollections.observableArrayList(newP1, newP2));
+        Toolkit.getToolkit().firePulse();
+
+        VirtualFlowTestUtils.assertCellTextEquals(list, 0, "updated name1");
+        VirtualFlowTestUtils.assertCellTextEquals(list, 1, "updated name2");
+    }
+
+    @Test
+    public void testReSetItemsShouldUpdateTheCells() {
+        final ListView<RT_22463_Person> list = new ListView<>();
+
+        RT_22463_Person p1 = new RT_22463_Person();
+        p1.setId(1L);
+        p1.setName("name1");
+        RT_22463_Person p2 = new RT_22463_Person();
+        p2.setId(2L);
+        p2.setName("name2");
+
+        stageLoader = new StageLoader(list);
+
+        list.setItems(FXCollections.observableArrayList(p1, p2));
+        Toolkit.getToolkit().firePulse();
+
+        VirtualFlowTestUtils.assertCellTextEquals(list, 0, "name1");
+        VirtualFlowTestUtils.assertCellTextEquals(list, 1, "name2");
+
+        // Reset all Items by the new ones. Cells should get updated.
+        RT_22463_Person newP1 = new RT_22463_Person();
+        newP1.setId(1L);
+        newP1.setName("updated name1");
+        RT_22463_Person newP2 = new RT_22463_Person();
+        newP2.setId(2L);
+        newP2.setName("updated name2");
         list.setItems(FXCollections.observableArrayList(newP1, newP2));
+        Toolkit.getToolkit().firePulse();
+
         VirtualFlowTestUtils.assertCellTextEquals(list, 0, "updated name1");
         VirtualFlowTestUtils.assertCellTextEquals(list, 1, "updated name2");
     }
@@ -1160,52 +1199,32 @@ public class ListViewTest {
     }
 
     @Test
-    public void test_rt_35395_fixedCellSize() {
-        test_rt_35395(true);
+    public void testCellUpdateItemCallsFixedCellSize() {
+        testUpdateItemCalls(true);
     }
 
     @Test
-    public void test_rt_35395_notFixedCellSize() {
-        test_rt_35395(false);
+    public void testCellUpdateItemCallsNotFixedCellSize() {
+        testUpdateItemCalls(false);
     }
 
-    private class Counter {
-        public int updateCount;
+    private void testUpdateItemCalls(boolean useFixedCellSize) {
+        AtomicInteger counter = new AtomicInteger();
 
-        public static void reset(List<Counter> items) {
-            for (Counter c : items) {
-                c.updateCount = 0;
-            }
-        }
-
-        // verifies problem of JDK-8091726: that an update() method is not called more than once
-        public static void verify(List<Counter> items) {
-            for (int i = 0; i < items.size(); i++) {
-                Counter c = items.get(i);
-                int count = c.updateCount;
-                c.updateCount = 0;
-                assertTrue(c.updateCount < 2, "index=" + i + " updateCount=" + count);
-            }
-        }
-    }
-
-    // JDK-8091726
-    private void test_rt_35395(boolean useFixedCellSize) {
-        ObservableList<Counter> items = FXCollections.observableArrayList();
+        ObservableList<String> items = FXCollections.observableArrayList();
         for (int i = 0; i < 20; ++i) {
-            items.addAll(new Counter(), new Counter(), new Counter(), new Counter());
+            items.addAll("red", "green", "blue", "purple");
         }
 
-        ListView<Counter> listView = new ListView<>(items);
+        ListView<String> listView = new ListView<>(items);
         if (useFixedCellSize) {
-            listView.setFixedCellSize(18);
+            listView.setFixedCellSize(24);
         }
+
         listView.setCellFactory(lv -> new ListCellShim<>() {
             @Override
-            public void updateItem(Counter item, boolean empty) {
-                if (item != null) {
-                    item.updateCount++;
-                }
+            public void updateItem(String item, boolean empty) {
+                counter.addAndGet(1);
                 super.updateItem(item, empty);
                 setText(null);
                 if (empty) {
@@ -1218,48 +1237,29 @@ public class ListViewTest {
             }
         });
 
-        StageLoader sl = new StageLoader(listView);
+        stageLoader = new StageLoader(listView);
 
-        Platform.runLater(() -> {
-            Counter.reset(items);
-            items.set(10, new Counter());
-            Platform.runLater(() -> {
-                Toolkit.getToolkit().firePulse();
-                Counter.verify(items);
+        counter.set(0);
+        items.set(10, "yellow");
+        Toolkit.getToolkit().firePulse();
+        assertEquals(1, counter.get());
 
-                items.set(30, new Counter());
-                Platform.runLater(() -> {
-                    Toolkit.getToolkit().firePulse();
-                    Counter.verify(items);
+        counter.set(0);
+        items.set(30, "yellow");
+        Toolkit.getToolkit().firePulse();
+        assertEquals(0, counter.get());
 
-                    items.remove(12);
-                    Platform.runLater(() -> {
-                        Toolkit.getToolkit().firePulse();
-                        Counter.verify(items);
+        counter.set(0);
+        listView.scrollTo(5);
+        Toolkit.getToolkit().firePulse();
+        assertEquals(5, counter.get());
 
-                        items.add(12, new Counter());
-                        Platform.runLater(() -> {
-                            Toolkit.getToolkit().firePulse();
-                            Counter.verify(items);
+        counter.set(0);
+        listView.scrollTo(55);
+        Toolkit.getToolkit().firePulse();
 
-                            listView.scrollTo(5);
-                            Platform.runLater(() -> {
-                                Toolkit.getToolkit().firePulse();
-                                Counter.verify(items);
-
-                                listView.scrollTo(55);
-                                Platform.runLater(() -> {
-                                    Toolkit.getToolkit().firePulse();
-                                    Counter.verify(items);
-
-                                    sl.dispose();
-                                });
-                            });
-                        });
-                    });
-                });
-            });
-        });
+        int expected = useFixedCellSize ? 17 : 53;
+        assertEquals(expected, counter.get());
     }
 
     @Test public void test_rt_37632() {

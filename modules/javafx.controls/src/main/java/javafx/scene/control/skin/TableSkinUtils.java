@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,10 +24,8 @@
  */
 package javafx.scene.control.skin;
 
-import com.sun.javafx.scene.control.TreeTableViewBackingList;
 import javafx.beans.property.BooleanProperty;
 import javafx.beans.property.ObjectProperty;
-import javafx.beans.property.SimpleObjectProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.scene.Node;
@@ -180,22 +178,6 @@ class TableSkinUtils {
             return (TC) ((TableView)control).getVisibleLeafColumn(col);
         } else if (control instanceof TreeTableView) {
             return (TC) ((TreeTableView)control).getVisibleLeafColumn(col);
-        }
-        return null;
-    }
-
-    // returns a property representing the list of items in the control
-    public static <T> ObjectProperty<ObservableList<T>> itemsProperty(TableViewSkinBase<?,?,?,?,?> tableSkin) {
-        Object control = tableSkin.getSkinnable();
-        if (control instanceof TableView) {
-            return ((TableView)control).itemsProperty();
-        } else if (control instanceof TreeTableView && tableSkin instanceof TreeTableViewSkin) {
-            TreeTableViewSkin treeTableViewSkin = (TreeTableViewSkin)tableSkin;
-            if (treeTableViewSkin.tableBackingListProperty == null) {
-                treeTableViewSkin.tableBackingList = new TreeTableViewBackingList<>((TreeTableView)control);
-                treeTableViewSkin.tableBackingListProperty = new SimpleObjectProperty<>(treeTableViewSkin.tableBackingList);
-            }
-            return treeTableViewSkin.tableBackingListProperty;
         }
         return null;
     }

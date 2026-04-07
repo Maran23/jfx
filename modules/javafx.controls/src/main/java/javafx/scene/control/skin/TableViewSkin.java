@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,10 +25,17 @@
 
 package javafx.scene.control.skin;
 
+import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.List;
+
+import javafx.beans.InvalidationListener;
+import javafx.beans.Observable;
+import javafx.beans.property.ObjectProperty;
 import javafx.collections.FXCollections;
+import javafx.collections.ListChangeListener;
 import javafx.collections.ObservableList;
+import javafx.collections.WeakListChangeListener;
 import javafx.event.EventHandler;
 import javafx.geometry.NodeOrientation;
 import javafx.scene.AccessibleAction;
@@ -64,7 +71,23 @@ public class TableViewSkin<T> extends TableViewSkinBase<T, T, TableView<T>, Tabl
 
     private final TableViewBehavior<T>  behavior;
 
+    private ListChangeListener<T> rowCountListener = c -> {
+        while (c.next()) {
+            if (c.wasReplaced()) {
+                // JDK-8118897: Support for when an item is replaced with itself (but
+                // updated internal values that should be shown visually).
+                 for (int i = c.getFrom(); i < c.getTo(); i++) {
+                     flow.setCellDirty(i);
+                 }
+            }
+        }
 
+        markItemCountDirtyAndRequestLayout();
+        getSkinnable().edit(-1, null);
+    };
+
+    private WeakListChangeListener<T> weakRowCountListener =
+            new WeakListChangeListener<>(rowCountListener);
 
     /* *************************************************************************
      *                                                                         *
@@ -89,6 +112,19 @@ public class TableViewSkin<T> extends TableViewSkinBase<T, T, TableView<T>, Tabl
         flow.setCellFactory(flow -> createCell());
 
         ListenerHelper lh = ListenerHelper.get(this);
+
+        final ObjectProperty<ObservableList<T>> itemsProperty = getSkinnable().itemsProperty();
+        updateTableItems(null, itemsProperty.get());
+
+        lh.addInvalidationListener(itemsProperty, new InvalidationListener() {
+            private WeakReference<ObservableList<T>> weakItemsRef = new WeakReference<>(itemsProperty.get());
+
+            @Override public void invalidated(Observable observable) {
+                ObservableList<T> oldItems = weakItemsRef.get();
+                weakItemsRef = new WeakReference<>(itemsProperty.get());
+                updateTableItems(oldItems, itemsProperty.get());
+            }
+        });
 
         EventHandler<MouseEvent> ml = event -> {
             // This ensures that the table maintains the focus, even when the vbar
@@ -126,6 +162,17 @@ public class TableViewSkin<T> extends TableViewSkinBase<T, T, TableView<T>, Tabl
         updateItemCount();
     }
 
+    private void updateTableItems(ObservableList<T> oldList, ObservableList<T> newList) {
+        if (oldList != null) {
+            oldList.removeListener(weakRowCountListener);
+        }
+
+        if (newList != null) {
+            newList.addListener(weakRowCountListener);
+        }
+
+        markItemCountDirtyAndRequestLayout();
+    }
 
 
     /* *************************************************************************
@@ -137,6 +184,13 @@ public class TableViewSkin<T> extends TableViewSkinBase<T, T, TableView<T>, Tabl
     /** {@inheritDoc} */
     @Override
     public void dispose() {
+        if (getSkinnable() == null) {
+            return;
+        }
+
+        final ObjectProperty<ObservableList<T>> itemsProperty = getSkinnable().itemsProperty();
+        updateTableItems(itemsProperty.get(), null);
+
         if (behavior != null) {
             behavior.dispose();
         }

@@ -508,9 +508,6 @@ public class TreeView<T> extends Control {
                 weakOldItem = new WeakReference<>(root);
             }
 
-            // Fix for JDK-8094887
-            edit(null);
-
             expandedItemCountDirty = true;
             updateRootExpanded();
         }

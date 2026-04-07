@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -101,9 +101,6 @@ public class ListViewSkin<T> extends VirtualContainerBase<ListView<T>, ListCell<
 
     private ObservableList<T> listViewItems;
 
-    private boolean needCellsReconfigured = false;
-
-    private int itemCount = -1;
     private ListViewBehavior<T> behavior;
 
 
@@ -136,25 +133,15 @@ public class ListViewSkin<T> extends VirtualContainerBase<ListView<T>, ListCell<
                     for (int i = c.getFrom(); i < c.getTo(); i++) {
                         flow.setCellDirty(i);
                     }
-
-                    break;
-                } else if (c.getRemovedSize() == itemCount) {
-                    // JDK-8098235: If the user clears out an items list then we
-                    // should reset all cells (in particular their contained
-                    // items) such that a subsequent addition to the list of
-                    // an item which equals the old item (but is rendered
-                    // differently) still displays as expected (i.e. with the
-                    // updated display, not the old display).
-                    itemCount = 0;
+                } else {
+                    requestRebuildCells();
                     break;
                 }
             }
 
+            markItemCountDirtyAndRequestLayout();
             // fix for JDK-8094887
             getSkinnable().edit(-1);
-
-            markItemCountDirty();
-            getSkinnable().requestLayout();
         }
     };
 
@@ -279,12 +266,6 @@ public class ListViewSkin<T> extends VirtualContainerBase<ListView<T>, ListCell<
                                             final double w, final double h) {
         super.layoutChildren(x, y, w, h);
 
-        if (needCellsReconfigured) {
-            flow.reconfigureCells();
-        }
-
-        needCellsReconfigured = false;
-
         if (getItemCount() == 0) {
             // show message overlay instead of empty listview
             if (placeholderRegion != null) {
@@ -319,26 +300,16 @@ public class ListViewSkin<T> extends VirtualContainerBase<ListView<T>, ListCell<
 
     /** {@inheritDoc} */
     @Override protected int getItemCount() {
-        return itemCount;
+        ListView<T> listView = getSkinnable();
+        return listView.getItems() == null ? 0 : listView.getItems().size();
     }
 
     /** {@inheritDoc} */
     @Override protected void updateItemCount() {
-        if (flow == null) return;
-
-        int oldCount = itemCount;
-        int newCount = listViewItems == null ? 0 : listViewItems.size();
-
-        itemCount = newCount;
-
-        flow.setCellCount(newCount);
-
         updatePlaceholderRegionVisibility();
-        if (newCount == oldCount) {
-            needCellsReconfigured = true;
-        } else if (oldCount == 0) {
-            requestRebuildCells();
-        }
+
+        int newCount = getItemCount();
+        flow.setCellCount(newCount);
     }
 
     /** {@inheritDoc} */
@@ -463,8 +434,7 @@ public class ListViewSkin<T> extends VirtualContainerBase<ListView<T>, ListCell<
             listViewItems.addListener(weakListViewItemsListener);
         }
 
-        markItemCountDirty();
-        getSkinnable().requestLayout();
+        markItemCountDirtyAndRequestLayout();
     }
 
     private final void updatePlaceholderRegionVisibility() {

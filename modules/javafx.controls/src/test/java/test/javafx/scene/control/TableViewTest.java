@@ -48,7 +48,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Supplier;
 import java.util.stream.IntStream;
-import javafx.application.Platform;
+
 import javafx.beans.binding.Bindings;
 import javafx.beans.binding.ObjectBinding;
 import javafx.beans.property.ObjectProperty;
@@ -1088,7 +1088,7 @@ public class TableViewTest {
         VirtualFlowTestUtils.assertRowsEmpty(table, 2, -1); // rows 2+ should be empty
     }
 
-    @Test public void test_rt22463() {
+    @Test public void testClearSetItemsShouldUpdateTheCells() {
         final TableView<RT_22463_Person> table = new TableView<>();
         table.setTableMenuButtonVisible(true);
         TableColumn c1 = new TableColumn("Id");
@@ -1097,30 +1097,32 @@ public class TableViewTest {
         c2.setCellValueFactory(new PropertyValueFactory<>("name"));
         table.getColumns().addAll(c1, c2);
 
-        // before the change things display fine
         RT_22463_Person p1 = new RT_22463_Person();
-        p1.setId(1l);
+        p1.setId(1L);
         p1.setName("name1");
         RT_22463_Person p2 = new RT_22463_Person();
-        p2.setId(2l);
+        p2.setId(2L);
         p2.setName("name2");
 
         stageLoader = new StageLoader(table);
 
         table.setItems(FXCollections.observableArrayList(p1, p2));
+        Toolkit.getToolkit().firePulse();
+
         VirtualFlowTestUtils.assertCellTextEquals(table, 0, "1", "name1");
         VirtualFlowTestUtils.assertCellTextEquals(table, 1, "2", "name2");
 
-        // now we change the persons but they are still equal as the ID's don't
-        // change - but the items list is cleared so the cells should update
+        // Clear and Set all Items by the new ones. Cells should get updated.
         RT_22463_Person new_p1 = new RT_22463_Person();
-        new_p1.setId(1l);
+        new_p1.setId(1L);
         new_p1.setName("updated name1");
         RT_22463_Person new_p2 = new RT_22463_Person();
-        new_p2.setId(2l);
+        new_p2.setId(2L);
         new_p2.setName("updated name2");
         table.getItems().clear();
         table.setItems(FXCollections.observableArrayList(new_p1, new_p2));
+        Toolkit.getToolkit().firePulse();
+
         VirtualFlowTestUtils.assertCellTextEquals(table, 0, "1", "updated name1");
         VirtualFlowTestUtils.assertCellTextEquals(table, 1, "2", "updated name2");
     }
@@ -1144,6 +1146,8 @@ public class TableViewTest {
         stageLoader = new StageLoader(table);
 
         table.setItems(FXCollections.observableArrayList(p1, p2));
+        Toolkit.getToolkit().firePulse();
+
         VirtualFlowTestUtils.assertCellTextEquals(table, 0, "1", "name1");
         VirtualFlowTestUtils.assertCellTextEquals(table, 1, "2", "name2");
 
@@ -1154,8 +1158,46 @@ public class TableViewTest {
         RT_22463_Person newP2 = new RT_22463_Person();
         newP2.setId(2L);
         newP2.setName("updated name2");
+        table.getItems().setAll(FXCollections.observableArrayList(newP1, newP2));
+        Toolkit.getToolkit().firePulse();
 
+        VirtualFlowTestUtils.assertCellTextEquals(table, 0, "1", "updated name1");
+        VirtualFlowTestUtils.assertCellTextEquals(table, 1, "2", "updated name2");
+    }
+
+    @Test
+    public void testReSetItemsShouldUpdateTheCells() {
+        final TableView<RT_22463_Person> table = new TableView<>();
+        TableColumn<RT_22463_Person, ?> c1 = new TableColumn<>("Id");
+        TableColumn<RT_22463_Person, ?> c2 = new TableColumn<>("Name");
+        c1.setCellValueFactory(new PropertyValueFactory<>("id"));
+        c2.setCellValueFactory(new PropertyValueFactory<>("name"));
+        table.getColumns().addAll(c1, c2);
+
+        RT_22463_Person p1 = new RT_22463_Person();
+        p1.setId(1L);
+        p1.setName("name1");
+        RT_22463_Person p2 = new RT_22463_Person();
+        p2.setId(2L);
+        p2.setName("name2");
+
+        stageLoader = new StageLoader(table);
+
+        table.setItems(FXCollections.observableArrayList(p1, p2));
+        Toolkit.getToolkit().firePulse();
+
+        VirtualFlowTestUtils.assertCellTextEquals(table, 0, "1", "name1");
+        VirtualFlowTestUtils.assertCellTextEquals(table, 1, "2", "name2");
+
+        // Reset all Items by the new ones. Cells should get updated.
+        RT_22463_Person newP1 = new RT_22463_Person();
+        newP1.setId(1L);
+        newP1.setName("updated name1");
+        RT_22463_Person newP2 = new RT_22463_Person();
+        newP2.setId(2L);
+        newP2.setName("updated name2");
         table.setItems(FXCollections.observableArrayList(newP1, newP2));
+        Toolkit.getToolkit().firePulse();
 
         VirtualFlowTestUtils.assertCellTextEquals(table, 0, "1", "updated name1");
         VirtualFlowTestUtils.assertCellTextEquals(table, 1, "2", "updated name2");
@@ -4201,29 +4243,24 @@ public class TableViewTest {
         sl.dispose();
     }
 
-    @Disabled("Fix not yet developed for TableView")
-    @Test public void test_rt_35395_testCell_fixedCellSize() {
-        test_rt_35395(true, true);
+    @Test public void testCellUpdateItemCallsFixedCellSize() {
+        testUpdateItemCalls(true, true);
     }
 
-    @Disabled("Fix not yet developed for TableView")
-    @Test public void test_rt_35395_testCell_notFixedCellSize() {
-        test_rt_35395(true, false);
+    @Test public void testCellUpdateItemCallsNotFixedCellSize() {
+        testUpdateItemCalls(true, false);
     }
 
-    @Disabled("Fix not yet developed for TableView")
-    @Test public void test_rt_35395_testRow_fixedCellSize() {
-        test_rt_35395(false, true);
+    @Test public void testRowUpdateItemCallsFixedCellSize() {
+        testUpdateItemCalls(false, true);
     }
 
-    @Disabled("Fix not yet developed for TableView")
-    @Test public void test_rt_35395_testRow_notFixedCellSize() {
-        test_rt_35395(false, false);
+    @Test public void testRowUpdateItemCallsNotFixedCellSize() {
+        testUpdateItemCalls(false, false);
     }
 
-    private int rt_35395_counter;
-    private void test_rt_35395(boolean testCell, boolean useFixedCellSize) {
-        rt_35395_counter = 0;
+    private void testUpdateItemCalls(boolean testCell, boolean useFixedCellSize) {
+        AtomicInteger counter = new AtomicInteger();
 
         ObservableList<String> items = FXCollections.observableArrayList();
         for (int i = 0; i < 20; ++i) {
@@ -4236,7 +4273,9 @@ public class TableViewTest {
         }
         tableView.setRowFactory(tv -> new TableRowShim<>() {
             @Override public void updateItem(String color, boolean empty) {
-                rt_35395_counter += testCell ? 0 : 1;
+                if (!testCell) {
+                    counter.addAndGet(1);
+                }
                 super.updateItem(color, empty);
             }
         });
@@ -4245,7 +4284,9 @@ public class TableViewTest {
         column.setCellValueFactory(param -> new ReadOnlyStringWrapper(param.getValue()));
         column.setCellFactory(tv -> new TableCellShim<>() {
             @Override public void updateItem(String color, boolean empty) {
-                rt_35395_counter += testCell ? 1 : 0;
+                if (testCell) {
+                    counter.addAndGet(1);
+                }
                 super.updateItem(color, empty);
                 setText(null);
                 if (empty) {
@@ -4259,37 +4300,29 @@ public class TableViewTest {
         });
         tableView.getColumns().addAll(column);
 
-        StageLoader sl = new StageLoader(tableView);
+        stageLoader = new StageLoader(tableView);
 
-        Platform.runLater(() -> {
-            rt_35395_counter = 0;
-            items.set(10, "yellow");
-            Platform.runLater(() -> {
-                Toolkit.getToolkit().firePulse();
-                assertEquals(1, rt_35395_counter);
-                rt_35395_counter = 0;
-                items.set(30, "yellow");
-                Platform.runLater(() -> {
-                    Toolkit.getToolkit().firePulse();
-                    assertEquals(0, rt_35395_counter);
-                    rt_35395_counter = 0;
-                    tableView.scrollTo(5);
-                    Platform.runLater(() -> {
-                        Toolkit.getToolkit().firePulse();
-                        assertEquals(5, rt_35395_counter);
-                        rt_35395_counter = 0;
-                        tableView.scrollTo(55);
-                        Platform.runLater(() -> {
-                            Toolkit.getToolkit().firePulse();
+        counter.set(0);
+        items.set(10, "yellow");
+        Toolkit.getToolkit().firePulse();
+        assertEquals(1, counter.get());
 
-                            int expected = useFixedCellSize ? 17 : 53;
-                            assertEquals(expected, rt_35395_counter);
-                            sl.dispose();
-                        });
-                    });
-                });
-            });
-        });
+        counter.set(0);
+        items.set(30, "yellow");
+        Toolkit.getToolkit().firePulse();
+        assertEquals(0, counter.get());
+
+        counter.set(0);
+        tableView.scrollTo(5);
+        Toolkit.getToolkit().firePulse();
+        assertEquals(5, counter.get());
+
+        counter.set(0);
+        tableView.scrollTo(55);
+        Toolkit.getToolkit().firePulse();
+
+        int expected = useFixedCellSize ? 17 : 53;
+        assertEquals(expected, counter.get());
     }
 
     @Test public void test_rt_37632() {

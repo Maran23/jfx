@@ -41,7 +41,6 @@ import com.sun.javafx.scene.control.TableColumnComparatorBase.TreeTableColumnCom
 import com.sun.javafx.scene.control.VirtualScrollBar;
 import com.sun.javafx.scene.control.behavior.TreeTableCellBehavior;
 import com.sun.javafx.tk.Toolkit;
-import javafx.application.Platform;
 import javafx.beans.InvalidationListener;
 import javafx.beans.Observable;
 import javafx.beans.binding.Bindings;
@@ -119,9 +118,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Disabled;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.MethodSource;
-import org.junit.jupiter.params.provider.Arguments;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -134,10 +131,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertTimeout;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
-import org.junit.jupiter.api.Assumptions;
-import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.params.provider.Arguments;
+
 import java.util.stream.Stream;
 
 public class TreeTableViewTest {
@@ -1744,7 +1738,7 @@ public class TreeTableViewTest {
         VirtualFlowTestUtils.assertRowsEmpty(table, 3, -1); // rows 3+ should be empty
     }
 
-    @Test public void test_rt22463() {
+    @Test public void testClearSetChildrenShouldUpdateTheCells() {
         final TreeTableView<RT_22463_Person> table = new TreeTableView<>();
         table.setTableMenuButtonVisible(true);
         TreeTableColumn c1 = new TreeTableColumn("Id");
@@ -1762,31 +1756,33 @@ public class TreeTableViewTest {
 
         table.setRoot(root);
 
-        // before the change things display fine
         RT_22463_Person p1 = new RT_22463_Person();
-        p1.setId(1l);
+        p1.setId(1L);
         p1.setName("name1");
         RT_22463_Person p2 = new RT_22463_Person();
-        p2.setId(2l);
+        p2.setId(2L);
         p2.setName("name2");
         root.getChildren().addAll(
                 new TreeItem<>(p1),
                 new TreeItem<>(p2));
+        Toolkit.getToolkit().firePulse();
+
         VirtualFlowTestUtils.assertCellTextEquals(table, 1, "1", "name1");
         VirtualFlowTestUtils.assertCellTextEquals(table, 2, "2", "name2");
 
-        // now we change the persons but they are still equal as the ID's don't
-        // change - but the items list is cleared so the cells should update
+        // Clear and Set all TreeItems by the new ones. Cells should get updated.
         RT_22463_Person new_p1 = new RT_22463_Person();
-        new_p1.setId(1l);
+        new_p1.setId(1L);
         new_p1.setName("updated name1");
         RT_22463_Person new_p2 = new RT_22463_Person();
-        new_p2.setId(2l);
+        new_p2.setId(2L);
         new_p2.setName("updated name2");
         root.getChildren().clear();
         root.getChildren().setAll(
                 new TreeItem<>(new_p1),
                 new TreeItem<>(new_p2));
+        Toolkit.getToolkit().firePulse();
+
         VirtualFlowTestUtils.assertCellTextEquals(table, 1, "1", "updated name1");
         VirtualFlowTestUtils.assertCellTextEquals(table, 2, "2", "updated name2");
     }
@@ -1818,6 +1814,8 @@ public class TreeTableViewTest {
         root.getChildren().addAll(
                 new TreeItem<>(p1),
                 new TreeItem<>(p2));
+        Toolkit.getToolkit().firePulse();
+
         VirtualFlowTestUtils.assertCellTextEquals(table, 1, "1", "name1");
         VirtualFlowTestUtils.assertCellTextEquals(table, 2, "2", "name2");
 
@@ -1831,6 +1829,59 @@ public class TreeTableViewTest {
         root.getChildren().setAll(
                 new TreeItem<>(newP1),
                 new TreeItem<>(newP2));
+        Toolkit.getToolkit().firePulse();
+
+        VirtualFlowTestUtils.assertCellTextEquals(table, 1, "1", "updated name1");
+        VirtualFlowTestUtils.assertCellTextEquals(table, 2, "2", "updated name2");
+    }
+
+    @Test
+    public void testReSetRootShouldUpdateTheCells() {
+        final TreeTableView<RT_22463_Person> table = new TreeTableView<>();
+        TreeTableColumn<RT_22463_Person, ?> c1 = new TreeTableColumn<>("Id");
+        TreeTableColumn<RT_22463_Person, ?> c2 = new TreeTableColumn<>("Name");
+        c1.setCellValueFactory(new TreeItemPropertyValueFactory<>("id"));
+        c2.setCellValueFactory(new TreeItemPropertyValueFactory<>("name"));
+        table.getColumns().addAll(c1, c2);
+
+        RT_22463_Person rootPerson = new RT_22463_Person();
+        rootPerson.setName("Root");
+        TreeItem<RT_22463_Person> root = new TreeItem<>(rootPerson);
+        root.setExpanded(true);
+
+        stageLoader = new StageLoader(table);
+
+        table.setRoot(root);
+
+        RT_22463_Person p1 = new RT_22463_Person();
+        p1.setId(1L);
+        p1.setName("name1");
+        RT_22463_Person p2 = new RT_22463_Person();
+        p2.setId(2L);
+        p2.setName("name2");
+        root.getChildren().addAll(
+                new TreeItem<>(p1),
+                new TreeItem<>(p2));
+        Toolkit.getToolkit().firePulse();
+
+        VirtualFlowTestUtils.assertCellTextEquals(table, 1, "1", "name1");
+        VirtualFlowTestUtils.assertCellTextEquals(table, 2, "2", "name2");
+
+        // Replacing the root by a new one. Cells should get updated.
+        TreeItem<RT_22463_Person> newRoot = new TreeItem<>(rootPerson);
+        newRoot.setExpanded(true);
+        RT_22463_Person newP1 = new RT_22463_Person();
+        newP1.setId(1L);
+        newP1.setName("updated name1");
+        RT_22463_Person newP2 = new RT_22463_Person();
+        newP2.setId(2L);
+        newP2.setName("updated name2");
+        table.setRoot(newRoot);
+        newRoot.getChildren().addAll(
+                new TreeItem<>(newP1),
+                new TreeItem<>(newP2));
+        Toolkit.getToolkit().firePulse();
+
         VirtualFlowTestUtils.assertCellTextEquals(table, 1, "1", "updated name1");
         VirtualFlowTestUtils.assertCellTextEquals(table, 2, "2", "updated name2");
     }
@@ -4564,27 +4615,24 @@ public class TreeTableViewTest {
         assertTrue(sm.isSelected(4), debug());
     }
 
-    @Test public void test_rt_35395_testCell_fixedCellSize() {
-        test_rt_35395(true, true);
+    @Test public void testCellUpdateItemCallsFixedCellSize() {
+        testUpdateItemCalls(true, true);
     }
 
-    @Test public void test_rt_35395_testCell_notFixedCellSize() {
-        test_rt_35395(true, false);
+    @Test public void testCellUpdateItemCallsNotFixedCellSize() {
+        testUpdateItemCalls(true, false);
     }
 
-    @Disabled("Fix not yet developed for TreeTableView")
-    @Test public void test_rt_35395_testRow_fixedCellSize() {
-        test_rt_35395(false, true);
+    @Test public void testRowUpdateItemCallsFixedCellSize() {
+        testUpdateItemCalls(false, true);
     }
 
-    @Disabled("Fix not yet developed for TreeTableView")
-    @Test public void test_rt_35395_testRow_notFixedCellSize() {
-        test_rt_35395(false, false);
+    @Test public void testRowUpdateItemCallsNotFixedCellSize() {
+        testUpdateItemCalls(false, false);
     }
 
-    private int rt_35395_counter;
-    private void test_rt_35395(boolean testCell, boolean useFixedCellSize) {
-        rt_35395_counter = 0;
+    private void testUpdateItemCalls(boolean testCell, boolean useFixedCellSize) {
+        AtomicInteger counter = new AtomicInteger();
 
         TreeItem<String> root = new TreeItem<>("green");
         root.setExpanded(true);
@@ -4598,7 +4646,9 @@ public class TreeTableViewTest {
         }
         treeTableView.setRowFactory(tv -> new TreeTableRowShim<>() {
             @Override public void updateItem(String color, boolean empty) {
-                rt_35395_counter += testCell ? 0 : 1;
+                if (!testCell) {
+                    counter.addAndGet(1);
+                }
                 super.updateItem(color, empty);
             }
         });
@@ -4607,7 +4657,9 @@ public class TreeTableViewTest {
         column.setCellValueFactory(param -> new ReadOnlyStringWrapper(param.getValue().getValue()));
         column.setCellFactory(tv -> new TreeTableCellShim<>() {
             @Override public void updateItem(String color, boolean empty) {
-                rt_35395_counter += testCell ? 1 : 0;
+                if (testCell) {
+                    counter.addAndGet(1);
+                }
                 super.updateItem(color, empty);
                 setText(null);
                 if (empty) {
@@ -4621,38 +4673,29 @@ public class TreeTableViewTest {
         });
         treeTableView.getColumns().addAll(column);
 
-        StageLoader sl = new StageLoader(treeTableView);
+        stageLoader = new StageLoader(treeTableView);
 
-        Platform.runLater(() -> {
-            rt_35395_counter = 0;
-            root.getChildren().set(10, new TreeItem<>("yellow"));
-            Platform.runLater(() -> {
-                Toolkit.getToolkit().firePulse();
-                assertEquals(1, rt_35395_counter);
-                rt_35395_counter = 0;
-                root.getChildren().set(30, new TreeItem<>("yellow"));
-                Platform.runLater(() -> {
-                    Toolkit.getToolkit().firePulse();
-                    assertTrue(rt_35395_counter < 15);
-                    rt_35395_counter = 0;
-                    treeTableView.scrollTo(5);
-                    Platform.runLater(() -> {
-                        Toolkit.getToolkit().firePulse();
-                        assertTrue(rt_35395_counter > 0);
-                        assertTrue(rt_35395_counter < 39);
-                        rt_35395_counter = 0;
-                        treeTableView.scrollTo(55);
-                        Platform.runLater(() -> {
-                            Toolkit.getToolkit().firePulse();
+        counter.set(0);
+        root.getChildren().set(10, new TreeItem<>("yellow"));
+        Toolkit.getToolkit().firePulse();
+        assertEquals(1, counter.get());
 
-                            assertTrue(rt_35395_counter > 0);
-                            assertTrue(rt_35395_counter < 90);
-                            sl.dispose();
-                        });
-                    });
-                });
-            });
-        });
+        counter.set(0);
+        root.getChildren().set(30, new TreeItem<>("yellow"));
+        Toolkit.getToolkit().firePulse();
+        assertEquals(0, counter.get());
+
+        counter.set(0);
+        treeTableView.scrollTo(5);
+        Toolkit.getToolkit().firePulse();
+        assertEquals(5, counter.get());
+
+        counter.set(0);
+        treeTableView.scrollTo(55);
+        Toolkit.getToolkit().firePulse();
+
+        int expected = useFixedCellSize ? 17 : 53;
+        assertEquals(expected, counter.get());
     }
 
     @Test public void test_rt_37632() {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,8 +28,6 @@ package javafx.scene.control.skin;
 import com.sun.javafx.scene.control.LambdaMultiplePropertyChangeListenerHandler;
 import com.sun.javafx.scene.control.Properties;
 import com.sun.javafx.scene.control.TableColumnBaseHelper;
-import com.sun.javafx.scene.control.TreeTableViewBackingList;
-import com.sun.javafx.scene.control.skin.Utils;
 import javafx.beans.property.DoubleProperty;
 import javafx.beans.property.ReadOnlyObjectProperty;
 import javafx.beans.property.ReadOnlyObjectWrapper;
@@ -731,9 +729,6 @@ public class TableColumnHeader extends Region {
     }
 
     private <T,S> void resizeColumnToFitContent(TreeTableView<T> ttv, TreeTableColumn<T, S> tc, TableViewSkinBase tableSkin, int maxRows) {
-        List<?> items = new TreeTableViewBackingList(ttv);
-        if (items == null || items.isEmpty()) return;
-
         Callback cellFactory = tc.getCellFactory();
         if (cellFactory == null) return;
 
@@ -756,7 +751,8 @@ public class TableColumnHeader extends Region {
         TreeTableRow<T> treeTableRow = createMeasureRow(ttv, tableSkin, rowFactory);
         ((SkinBase<?>) treeTableRow.getSkin()).getChildren().add(cell);
 
-        int rows = maxRows == -1 ? items.size() : Math.min(items.size(), maxRows);
+        int itemCount = ttv.getExpandedItemCount();
+        int rows = maxRows == -1 ? itemCount : Math.min(itemCount, maxRows);
         double maxWidth = 0;
         cell.updateTableColumn(tc);
         cell.updateTreeTableView(ttv);
