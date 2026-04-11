@@ -42,9 +42,10 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 /**
- * This is a test for fonts, font loading, and their computed sizes.
- * Note that while we only test the stub font loading here, we still want to verify some basic rules that apply
- * for all headless tests. Some rules are somewhat derived from the real font loading in JavaFX.
+ * This class tests the contract for fonts, text, and computed sizes.
+ * While we only use the stub font and text framework here, we can still verify some rules
+ * that apply for all headless tests.
+ * Most rules are derived from the real font loading and text rendering in JavaFX.
  * <p>
  * See the Javadoc for every method to get more details.
  * @see test.com.sun.javafx.pgstub.StubFontLoader
