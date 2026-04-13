@@ -781,7 +781,7 @@ public class StubToolkit extends Toolkit {
         return false;
     }
 
-    private KeyCode platformShortcutKey = null;
+    private KeyCode platformShortcutKey;
 
     public void setPlatformShortcutKey(final KeyCode platformShortcutKey) {
         this.platformShortcutKey = platformShortcutKey;

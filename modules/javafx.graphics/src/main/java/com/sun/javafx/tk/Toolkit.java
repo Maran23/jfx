@@ -249,7 +249,7 @@ public abstract class Toolkit {
             TOOLKIT = (Toolkit)clz.getDeclaredConstructor().newInstance();
             if (TOOLKIT.init()) {
                 if (printToolkit) {
-                    System.err.println("JavaFX: using " + forcedToolkit);
+                    System.out.println("JavaFX: using " + forcedToolkit);
                 }
                 return TOOLKIT;
             }
