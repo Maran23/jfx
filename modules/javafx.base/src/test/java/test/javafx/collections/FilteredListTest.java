@@ -80,8 +80,6 @@ public class FilteredListTest {
         // list has duplicates!
         list.removeAll(filteredList);
         assertEquals(copyList, list);
-
-
     }
 
     @Test
