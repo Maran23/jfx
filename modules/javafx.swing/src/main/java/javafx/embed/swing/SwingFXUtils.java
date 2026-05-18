@@ -29,7 +29,6 @@ import java.awt.image.BufferedImage;
 import javafx.scene.image.Image;
 import javafx.scene.image.PixelReader;
 import javafx.scene.image.WritableImage;
-import com.sun.javafx.util.ImageUtils;
 
 /**
  * This class provides utility methods for converting data types between
@@ -62,7 +61,7 @@ public class SwingFXUtils {
      * @since JavaFX 2.2
      */
     public static WritableImage toFXImage(BufferedImage bimg, WritableImage wimg) {
-        return ImageUtils.toFXImage(bimg, wimg);
+        return null;
     }
 
     /**
@@ -95,6 +94,6 @@ public class SwingFXUtils {
      * @since JavaFX 2.2
      */
     public static BufferedImage fromFXImage(Image img, BufferedImage bimg) {
-        return ImageUtils.fromFXImage(img, bimg);
+        return null;
     }
 }

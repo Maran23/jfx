@@ -79,7 +79,6 @@ import com.sun.javafx.embed.swing.newimpl.JFXPanelInteropN;
 import com.sun.javafx.logging.PlatformLogger;
 import com.sun.javafx.stage.EmbeddedWindow;
 import com.sun.javafx.tk.Toolkit;
-import com.sun.javafx.util.ImageUtils;
 
 /**
 * {@code JFXPanel} is a component to embed JavaFX content into
@@ -796,7 +795,7 @@ public class JFXPanel extends JComponent {
             BufferedImage oldIm = pixelsIm;
             int newPixelW = (int) Math.ceil(pWidth * newScaleFactorX);
             int newPixelH = (int) Math.ceil(pHeight * newScaleFactorY);
-            int type = ImageUtils.getBestBufferedImageType(hScenePeer.getPixelFormat(), null, false);
+            int type = 0;
             pixelsIm = new BufferedImage(newPixelW, newPixelH, type);
             if (oldIm != null) {
                 double ratioX = newScaleFactorX / scaleFactorX;

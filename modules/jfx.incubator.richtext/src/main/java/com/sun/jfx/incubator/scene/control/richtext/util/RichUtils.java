@@ -66,7 +66,6 @@ import javafx.scene.text.TextFlow;
 import com.sun.javafx.scene.text.TextFlowHelper;
 import com.sun.javafx.scene.text.TextLayout;
 import com.sun.javafx.scene.text.TextLine;
-import com.sun.javafx.util.ImageUtils;
 import jfx.incubator.scene.control.richtext.RichTextArea;
 import jfx.incubator.scene.control.richtext.TextPos;
 import jfx.incubator.scene.control.richtext.model.StyleAttribute;
@@ -441,7 +440,7 @@ public final class RichUtils {
      * @throws IOException if an I/O error occurs
      */
     public static byte[] writePNG(Image im) throws IOException {
-        return ImageUtils.writeImage(im, "PNG");
+        return null;
     }
 
     /**
