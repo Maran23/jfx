@@ -42,8 +42,6 @@
 module javafx.graphics {
     requires java.xml;
 
-    requires static java.desktop;
-
     requires transitive javafx.base;
 
     exports javafx.animation;
