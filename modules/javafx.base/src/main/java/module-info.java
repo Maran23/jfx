@@ -31,13 +31,11 @@
  * @since 9
  */
 module javafx.base {
-    requires static java.desktop;
     requires static jdk.jfr;
 
     exports javafx.beans;
     exports javafx.beans.binding;
     exports javafx.beans.property;
-    exports javafx.beans.property.adapter;
     exports javafx.beans.value;
     exports javafx.collections;
     exports javafx.collections.transformation;

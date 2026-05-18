@@ -46,7 +46,6 @@ import java.io.SequenceInputStream;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map.Entry;
-import java.util.Optional;
 
 /**
  * A convenience class for simple image loading. Factories for creating loaders
@@ -179,7 +178,6 @@ public class ImageStorage {
      */
     private final HashMap<String, ImageLoaderFactory> loaderFactoriesByMimeSubtype;
     private final ImageLoaderFactory[] loaderFactories;
-    private Optional<ImageLoaderFactory> j2dImageLoaderFactory;
     private int maxSignatureLength;
 
     private static final boolean isIOS = PlatformUtil.isIOS();
@@ -630,25 +628,7 @@ public class ImageStorage {
         return null;
     }
 
-    /**
-     * Tries to create an {@link com.sun.javafx.iio.java2d.J2DImageLoader} for the specified input stream.
-     * This might fail in the future if the {@code java.desktop} module is not present on the module path.
-     * At present, this will not fail because JavaFX requires the {@code java.desktop} module.
-     */
     private synchronized ImageLoader tryCreateJ2DImageLoader(InputStream stream) throws IOException {
-        if (j2dImageLoaderFactory == null) {
-            try {
-                Class<?> factoryClass = Class.forName("com.sun.javafx.iio.java2d.J2DImageLoaderFactory");
-                j2dImageLoaderFactory = Optional.of((ImageLoaderFactory)factoryClass.getMethod("getInstance").invoke(null));
-            } catch (NoClassDefFoundError | ReflectiveOperationException e) {
-                j2dImageLoaderFactory = Optional.empty();
-            }
-        }
-
-        if (j2dImageLoaderFactory.isEmpty()) {
-            return null;
-        }
-
-        return j2dImageLoaderFactory.get().createImageLoader(stream);
+        return null;
     }
 }
