@@ -475,8 +475,8 @@ defineProperty("COMPILE_PARFAIT", "false")
 ext.IS_COMPILE_PARFAIT = Boolean.parseBoolean(COMPILE_PARFAIT)
 
 // INCLUDE_APPS specifies whether the "apps" directory is part of the build.
-// When disabled, the "apps", "appsjar" and "clean" tasks will not compile or clean the apps in there.
-defineProperty("INCLUDE_APPS", "false")
+// When disabled, the "apps", "appsjar" and "clean" tasks will not compile or clean the "apps" directory.
+defineProperty("INCLUDE_APPS", "true")
 ext.IS_INCLUDE_APPS = Boolean.parseBoolean(INCLUDE_APPS)
 
 defineProperty("STATIC_BUILD", "false")
