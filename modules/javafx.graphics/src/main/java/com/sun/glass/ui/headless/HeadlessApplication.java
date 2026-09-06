@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, Gluon. All rights reserved.
+ * Copyright (c) 2025, 2026, Gluon. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -240,7 +240,60 @@ public class HeadlessApplication extends Application {
 
     @Override
     protected int _getKeyCodeForChar(char c, int hint) {
-        throw new UnsupportedOperationException("Not supported yet.");
+        c = Character.toUpperCase(c);
+        c = characterWithoutShift(c);
+        if (c >= 'A' && c <= 'Z') {
+            return (c - 'A') + KeyEvent.VK_A;
+        } else if (c >= '0' && c <= '9') {
+            return (c - '0') + KeyEvent.VK_0;
+        }
+        return switch (c) {
+            case '`' -> KeyEvent.VK_BACK_QUOTE;
+            case '-' -> KeyEvent.VK_MINUS;
+            case '=' -> KeyEvent.VK_EQUALS;
+            case '[' -> KeyEvent.VK_BRACELEFT;
+            case ']' -> KeyEvent.VK_BRACERIGHT;
+            case '\\' -> KeyEvent.VK_BACK_SLASH;
+            case ';' -> KeyEvent.VK_SEMICOLON;
+            case '\'' -> KeyEvent.VK_QUOTE;
+            case ',' -> KeyEvent.VK_COMMA;
+            case '.' -> KeyEvent.VK_PERIOD;
+            case '/' -> KeyEvent.VK_SLASH;
+            default -> KeyEvent.VK_UNDEFINED;
+        };
+    }
+
+    /**
+     * Removes the shift modification (US keyboard layout), if needed.
+     *
+     * @param c the character
+     * @return the eventually modified character
+     */
+    private static char characterWithoutShift(char c) {
+        return switch (c) {
+            case '!' -> '1';
+            case '@' -> '2';
+            case '#' -> '3';
+            case '$' -> '4';
+            case '%' -> '5';
+            case '^' -> '6';
+            case '&' -> '7';
+            case '*' -> '8';
+            case '(' -> '9';
+            case ')' -> '0';
+            case '~' -> '`';
+            case '_' -> '-';
+            case '+' -> '=';
+            case '{' -> '[';
+            case '}' -> ']';
+            case '|' -> '\\';
+            case ':' -> ';';
+            case '\"' -> '\'';
+            case '<' -> ',';
+            case '>' -> '.';
+            case '?' -> '/';
+            default -> c;
+        };
     }
 
 }
