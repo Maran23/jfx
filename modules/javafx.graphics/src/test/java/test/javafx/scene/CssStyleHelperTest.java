@@ -32,6 +32,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import com.sun.javafx.css.StyleManager;
 import com.sun.javafx.scene.CssFlags;
@@ -1598,6 +1599,113 @@ public class CssStyleHelperTest {
         Toolkit.getToolkit().firePulse();
 
         assertNull(leaf.getBackground(), "nothing matches .leaf still");
+    }
+
+    /**
+     * A style class added to a parent must restyle that parent's existing children even when the parent's
+     * style helper was already rebuilt by a newly added child and the parent went stale again afterward.
+     */
+    @Test
+    void testExistingChildRestyledWhenParentGoesStaleAfterEarlyRebuild() {
+        String theme = toDataURL("""
+                .container {
+                    -fx-padding: 2;
+                }
+                .x {
+                    -fx-padding: 5;
+                }
+                .x .target {
+                    -fx-background-color: #FF0000;
+                }
+                """);
+        scene.getStylesheets().add(theme);
+        stage.show();
+
+        root.getStyleClass().add("container");
+
+        StackPane parent = new StackPane();
+        StackPane target = new StackPane();
+        target.getStyleClass().add("target");
+        parent.getChildren().add(target);
+        root.getChildren().add(parent);
+
+        Toolkit.getToolkit().firePulse();
+        assertNull(target.getBackground(), "nothing matches .x");
+
+        parent.getChildren().add(new StackPane());
+        parent.getStyleClass().add("x");
+
+        parent.getChildren().add(new StackPane());
+
+        // Marks the parent stale again, but ends up with the very same style map, so the REAPPLY
+        // will reuse the helper and must still visit the children because of the early rebuild.
+        parent.getStyleClass().add("unmatched");
+        parent.getStyleClass().remove("unmatched");
+
+        Toolkit.getToolkit().firePulse();
+
+        assertEquals(Color.RED, getBackgroundColor(target),
+                "existing child must be restyled after the parent gained a style class");
+    }
+
+    /**
+     * Adding a node below a chain of ancestors that all have a deferred REAPPLY must not walk the
+     * scene graph once per stale ancestor.
+     */
+    @Test
+    void testAddingChildUnderStaleAncestorsStaysLinear() {
+        scene.getStylesheets().add(toDataURL("""
+                .old {
+                   -fx-padding: 1.0;
+                }
+                .new {
+                   -fx-padding: 99.0;
+                }
+                """));
+
+        AtomicInteger walks = new AtomicInteger();
+
+        class CountingPane extends Pane {
+            CountingPane(String styleClass) {
+                getStyleClass().add(styleClass);
+            }
+
+            @Override
+            public Styleable getStyleableParent() {
+                walks.incrementAndGet();
+                return super.getStyleableParent();
+            }
+        }
+
+        List<CountingPane> chain = new ArrayList<>();
+        CountingPane top = new CountingPane("old");
+        chain.add(top);
+
+        CountingPane leaf = top;
+        for (int i = 1; i < 16; i++) {
+            CountingPane pane = new CountingPane("old");
+            leaf.getChildren().add(pane);
+            chain.add(pane);
+            leaf = pane;
+        }
+
+        scene.setRoot(top);
+        top.applyCss();
+
+        walks.set(0);
+        leaf.getChildren().add(new Pane());
+        int baseline = walks.get();
+
+        // Every pane now has a deferred REAPPLY and therefore a stale style helper.
+        for (CountingPane pane : chain) {
+            pane.getStyleClass().setAll("new");
+        }
+
+        walks.set(0);
+        leaf.getChildren().add(new Pane());
+        int stale = walks.get();
+
+        assertTrue(stale <= baseline * 4, "Baseline = " + baseline + ", observed = " + stale);
     }
 
     private Paint getBackgroundColor(StackPane leaf) {

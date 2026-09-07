@@ -26,6 +26,7 @@ package javafx.scene;
 
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -86,26 +87,36 @@ final class CssStyleHelper {
     }
 
     /**
-     * Creates a new StyleHelper.
+     * Creates a new {@link CssStyleHelper} for the {@link Node},
+     * or null if it does not need one due to no style matching it.
+     *
+     * @return the {@link CssStyleHelper} or null
      */
     static CssStyleHelper createStyleHelper(final Node node) {
-        boolean userSetFont;
-        if (node.styleHelper == null) {
-            // Node styleHelper can not be reused later, because it does not exist.
-            // We can therefore safely set this true and ignore the property for the rest of this method.
-            userSetFont = true;
-        } else {
-            userSetFont = isUserSetFont(node);
+        Styleable[] path = styleablePath(node);
+
+        // We first recreate the style helper that are stale.
+        // This usually only happens when a child changes the scene tree while its CSS is processed.
+        for (int index = path.length - 1; index > 0; index--) {
+            if (path[index] instanceof Node ancestor && ancestor.cssHelperStale) {
+                ancestor.cssHelperStale = false;
+                ancestor.cssHelperResolvedEarly = true;
+                ancestor.styleHelper = createStyleHelper(ancestor, path, index);
+            }
         }
 
-        Node styleableAncestor = null;
-        Styleable parent = node;
-        int depth = 0;
-        while (parent != null) {
-            depth++;
-            parent = parent.getStyleableParent();
+        return createStyleHelper(node, path, 0);
+    }
 
-            if (parent instanceof Node parentNode) {
+    private static CssStyleHelper createStyleHelper(final Node node, Styleable[] path, int index) {
+        // A node without a style helper can not reuse it later, so we can safely set this true
+        // and ignore the property for the rest of this method.
+        boolean userSetFont = node.styleHelper == null || isUserSetFont(node);
+        final int depth = path.length - index;
+
+        Node styleableAncestor = null;
+        for (int i = index + 1; i < path.length && (styleableAncestor == null || !userSetFont); i++) {
+            if (path[i] instanceof Node parentNode) {
                 if (styleableAncestor == null && isStyleableAncestor(parentNode)) {
                     styleableAncestor = parentNode;
                 }
@@ -155,7 +166,7 @@ final class CssStyleHelper {
                 node.styleHelper.triggerStates.addAll(triggerStates[0]);
             }
 
-            updateParentTriggerStates(node, depth, triggerStates);
+            updateParentTriggerStates(path, index, triggerStates);
             return node.styleHelper;
         }
 
@@ -198,9 +209,9 @@ final class CssStyleHelper {
             helper.triggerStates.addAll(triggerStates[0]);
         }
 
-        updateParentTriggerStates(node, depth, triggerStates);
+        updateParentTriggerStates(path, index, triggerStates);
 
-        helper.cacheContainer = new CacheContainer(node, styleMap, depth);
+        helper.cacheContainer = new CacheContainer(node, styleMap, path, index);
 
         // If this node had a style helper, we need to reset all properties that will be unset with the
         // new style map to their initial values. Properties that remain set with the new style map carry
@@ -215,19 +226,30 @@ final class CssStyleHelper {
         return helper;
     }
 
-    private static void updateParentTriggerStates(Styleable styleable, int depth, PseudoClassState[] triggerStates) {
+    private static Styleable[] styleablePath(Styleable styleable) {
+        Styleable[] path = new Styleable[8];
+        int depth = 0;
+
+        for (Styleable current = styleable; current != null; current = current.getStyleableParent()) {
+            if (depth == path.length) {
+                path = Arrays.copyOf(path, depth * 2);
+            }
+            path[depth++] = current;
+        }
+
+        return depth == path.length ? path : Arrays.copyOf(path, depth);
+    }
+
+    private static void updateParentTriggerStates(Styleable[] path, int startIndex, PseudoClassState[] triggerStates) {
         // make sure parent's transition states include the pseudo-classes
         // found when matching selectors
-        Styleable parent = styleable.getStyleableParent();
-        for(int n=1; n<depth; n++) {
-
+        for (int triggerIndex = 1; triggerIndex < triggerStates.length; triggerIndex++) {
             // TODO: this means that a style like .menu-item:hover won't work. Need to separate CssStyleHelper tree from scene-graph tree
-            if (!(parent instanceof Node parentNode)) {
-                parent = parent.getStyleableParent();
+            if (!(path[startIndex + triggerIndex] instanceof Node parentNode)) {
                 continue;
             }
 
-            final PseudoClassState triggerState = triggerStates[n];
+            final PseudoClassState triggerState = triggerStates[triggerIndex];
 
             // if there is nothing in triggerState, then continue since there
             // isn't any pseudo-class state that might trigger a state change
@@ -240,8 +262,6 @@ final class CssStyleHelper {
                 }
                 parentNode.styleHelper.triggerStates.addAll(triggerState);
             }
-
-            parent = parent.getStyleableParent();
         }
     }
 
@@ -281,11 +301,6 @@ final class CssStyleHelper {
      * can actually contribute styles.
      */
     private static boolean isStyleableAncestor(Node parentNode) {
-        if (parentNode.cssHelperState == Node.CssHelperState.STALE) {
-            parentNode.cssHelperState = Node.CssHelperState.RESOLVED_EARLY;
-            parentNode.styleHelper = createStyleHelper(parentNode);
-        }
-
         return parentNode.styleHelper != null && parentNode.styleHelper.cacheContainer != null;
     }
 
@@ -374,10 +389,10 @@ final class CssStyleHelper {
         private CacheContainer(
                 Node node,
                 final StyleMap styleMap,
-                int depth) {
-
+                Styleable[] path,
+                int startIndex) {
             int ctr = 0;
-            int[] smapIds = new int[depth];
+            int[] smapIds = new int[path.length - startIndex];
             smapIds[ctr++] = this.smapId = styleMap.getId();
 
             //
@@ -389,19 +404,14 @@ final class CssStyleHelper {
             // set of smapId's can potentially share previously calculated
             // values.
             //
-            Styleable parent = node.getStyleableParent();
-            for(int d=1; d<depth; d++) {
-
+            for (int pathIndex = startIndex + 1; pathIndex < path.length; pathIndex++) {
                 // TODO: won't work for something like .menu-item:hover. Need to separate CssStyleHelper tree from scene-graph tree
-                if ( parent instanceof Node) {
-                    Node parentNode = (Node)parent;
+                if (path[pathIndex] instanceof Node parentNode) {
                     final CssStyleHelper helper = parentNode.styleHelper;
                     if (helper != null && helper.cacheContainer != null) {
                         smapIds[ctr++] = helper.cacheContainer.smapId;
                     }
                 }
-                parent = parent.getStyleableParent();
-
             }
 
             this.styleCacheKey = new StyleCache.Key(smapIds, ctr);

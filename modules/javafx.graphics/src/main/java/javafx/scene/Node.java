@@ -9822,22 +9822,17 @@ public abstract sealed class Node
     CssFlags cssFlag = CssFlags.CLEAN;
 
     /**
-     * Tracks whether this {@link #styleHelper} is current, so that a descendant asking about it
-     * during its own {@link CssStyleHelper#createStyleHelper} knows if it can rely on it or needs to rebuild it.
+     * A {@code reapplyCSS()} was deferred, so {@link #styleHelper} is out of date. A descendant asking
+     * for it during its own {@link CssStyleHelper#createStyleHelper(Node)} must recreate it first.
      */
-    enum CssHelperState {
-        /** {@link #styleHelper} is current and may be relied upon. */
-        OK,
-        /** A {@code reapplyCSS()} was deferred, {@link #styleHelper} must be recreated before use. */
-        STALE,
-        /**
-         * A descendant recreated this {@link #styleHelper} on demand while the deferred {@code REAPPLY}
-         * was still pending. That REAPPLY must still visit this node's children, even if the helper is reusable.
-         */
-        RESOLVED_EARLY
-    }
+    boolean cssHelperStale;
 
-    CssHelperState cssHelperState = CssHelperState.OK;
+    /**
+     * A descendant recreated this {@link #styleHelper} on demand while the deferred {@code REAPPLY} was
+     * still pending. That REAPPLY must still visit this node's children, even if the helper is reusable.
+     * This is independent of {@link #cssHelperStale}: the node can go stale again before the REAPPLY runs.
+     */
+    boolean cssHelperResolvedEarly;
 
     /**
      * Called when a CSS pseudo-class change would cause styles to be reapplied.
@@ -9953,7 +9948,7 @@ public abstract sealed class Node
         if (scene == null) return;
 
         if (cssFlag == CssFlags.REAPPLY) {
-            cssHelperState = CssHelperState.STALE;
+            cssHelperStale = true;
             return;
         }
 
@@ -9961,14 +9956,14 @@ public abstract sealed class Node
             // JDK-8193445 - don't reapply CSS from here
             // Defer CSS application to this Node by marking cssFlag as REAPPLY
             cssFlag = CssFlags.REAPPLY;
-            cssHelperState = CssHelperState.STALE;
+            cssHelperStale = true;
             return;
         }
 
         // JDK-8095580 - don't reapply CSS in the middle of an update
         if (cssFlag == CssFlags.UPDATE) {
             cssFlag = CssFlags.REAPPLY;
-            cssHelperState = CssHelperState.STALE;
+            cssHelperStale = true;
             notifyParentsOfInvalidatedCSS();
             return;
         }
@@ -10014,9 +10009,10 @@ public abstract sealed class Node
         // If a descendant already rebuilt our helper on demand, createStyleHelper below will find it
         // reusable and return the same instance - but this node's children have not been visited yet,
         // so their cached first styleable ancestor may still be stale.
-        final boolean resolvedEarly = cssHelperState == CssHelperState.RESOLVED_EARLY;
+        final boolean resolvedEarly = cssHelperResolvedEarly;
 
-        cssHelperState = CssHelperState.OK;
+        cssHelperStale = false;
+        cssHelperResolvedEarly = false;
 
         // CSS state is "REAPPLY"
         cssFlag = CssFlags.REAPPLY;
