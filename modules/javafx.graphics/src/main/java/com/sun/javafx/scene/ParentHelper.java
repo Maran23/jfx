@@ -67,19 +67,6 @@ public class ParentHelper extends NodeHelper {
         return ((ParentHelper) getHelper(parent)).getAllParentStylesheetsImpl(parent);
     }
 
-    /**
-     * Returns the stylesheets or null if the node stylesheets list is not initialized.
-     * <p>
-     * If the stylesheets of a {@link Parent} were never accessed (and therefore used),
-     * it is null as it will be lazily initialized only when accessed
-     * for the first time by the developer or JavaFX code.
-     * <p>
-     * Stylesheets on individual parent nodes are very rarely set (usually, stylesheets are set on the Scene).
-     * So we save an allocation by returning null when the stylesheets are not initialized.
-     *
-     * @param parent the parent
-     * @return the stylesheets or null
-     */
     public static List<String> getStylesheetsOrNull(Parent parent) {
         return parentAccessor.getStylesheetsOrNull(parent);
     }
