@@ -638,12 +638,7 @@ public class MenuItem implements EventTarget, Styleable {
             if (!hasId) sbuf.append('[');
             else sbuf.append(", ");
             sbuf.append("styleClass=");
-            for (int i = 0; i < getStyleClass().size(); i++) {
-                sbuf.append(getStyleClass().get(i));
-                if (i + 1 < getStyleClass().size()) {
-                    sbuf.append(' ');
-                }
-            }
+            sbuf.append(String.join(" ", getStyleClass()));
             sbuf.append("]");
         }
         return sbuf.toString();
