@@ -26,7 +26,9 @@
 package test.javafx.scene.control.css;
 
 import com.sun.javafx.tk.Toolkit;
+import javafx.collections.ObservableList;
 import javafx.css.CssParser;
+import javafx.scene.Node;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
@@ -37,6 +39,7 @@ import javafx.scene.layout.Pane;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import test.com.sun.javafx.scene.control.infrastructure.StageLoader;
 
@@ -52,12 +55,20 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 public class ControlCssTest {
 
     private StageLoader stageLoader;
+    private ObservableList<CssParser.ParseError> errors;
+
+    @BeforeEach
+    void setUp() {
+        errors = CssParser.errorsProperty();
+        errors.clear();
+    }
 
     @AfterEach
     void tearDown() {
         if (stageLoader != null) {
             stageLoader.dispose();
         }
+        errors.clear();
     }
 
     /**
@@ -65,22 +76,11 @@ public class ControlCssTest {
      */
     @Test
     void testLookupResolvesAfterSceneListenerRootSwap() {
-        var errors = CssParser.errorsProperty();
-        errors.clear();
-
         TabPane tabPane = new TabPane();
         Label label = new Label("Test");
         tabPane.getTabs().add(new Tab("TestTab", label));
 
-        AtomicBoolean swapped = new AtomicBoolean(false);
-        label.sceneProperty().addListener((_, _, newScene) -> {
-            if (newScene != null && !swapped.getAndSet(true)) {
-                Parent oldRoot = newScene.getRoot();
-                StackPane newRoot = new StackPane();
-                newScene.setRoot(newRoot);
-                newRoot.getChildren().setAll(oldRoot);
-            }
-        });
+        swapRootWhenAddedToScene(label);
 
         Button btn = new Button("Add Child");
         VBox root = new VBox(btn);
@@ -95,16 +95,13 @@ public class ControlCssTest {
     }
 
     /**
-     * When we swap a pane with a style class, the CSS for the children based of the Pane should correctly resolve.
+     * When we swap a pane with a style class, the CSS for the children based of the pane should correctly resolve.
      */
     @Test
     void testPaneClassLookupResolvesAfterSceneListenerPaneSwap() {
-        var errors = CssParser.errorsProperty();
-        errors.clear();
-
         String theme = toBase64("""
                 .my-pane {
-                    -color: #1B2631;
+                    -color: green;
                 }
                 .my-pane .label {
                     -fx-text-fill: -color;
@@ -146,6 +143,56 @@ public class ControlCssTest {
         Toolkit.getToolkit().firePulse();
 
         assertEquals(0, errors.size(), errors::toString);
+    }
+
+    /**
+     * A node that is styled after the root was swapped must still resolve the looked-up colors of the new root.
+     */
+    @Test
+    void testLookupResolvesForSiblingStyledAfterSceneListenerRootSwap() {
+        String theme = toBase64("""
+                .root {
+                    -color: green;
+                }
+                .leaf {
+                    -fx-background-color: -color;
+                }
+                """);
+
+        TabPane tabPane = new TabPane();
+        Label label = new Label("Test");
+        tabPane.getTabs().add(new Tab("TestTab", label));
+
+        swapRootWhenAddedToScene(label);
+
+        StackPane leaf = new StackPane();
+        leaf.getStyleClass().add("leaf");
+
+        Button btn = new Button("Add Child");
+        VBox root = new VBox(btn, leaf);
+        // Inserted before the leaf, so that the leaf is styled after the tab pane swapped the root.
+        btn.setOnAction(_ -> root.getChildren().add(1, tabPane));
+
+        Scene scene = new Scene(root);
+        scene.getStylesheets().add(theme);
+        stageLoader = new StageLoader(scene);
+
+        btn.fire();
+        Toolkit.getToolkit().firePulse();
+
+        assertEquals(0, errors.size(), errors::toString);
+    }
+
+    private static void swapRootWhenAddedToScene(Node node) {
+        AtomicBoolean swapped = new AtomicBoolean(false);
+        node.sceneProperty().addListener((_, _, newScene) -> {
+            if (newScene != null && !swapped.getAndSet(true)) {
+                Parent oldRoot = newScene.getRoot();
+                StackPane newRoot = new StackPane();
+                newScene.setRoot(newRoot);
+                newRoot.getChildren().setAll(oldRoot);
+            }
+        });
     }
 
     private static String toBase64(String css) {

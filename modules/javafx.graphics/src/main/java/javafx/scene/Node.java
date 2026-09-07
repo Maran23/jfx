@@ -1167,6 +1167,11 @@ public abstract sealed class Node
             focusSetDirty(newScene);
         }
 
+        // All children are notified below before this node is, so the style helper is marked stale upfront.
+        if (sceneChanged) {
+            cssHelperStale = true;
+        }
+
         scenesChanged(newScene, newSubScene, oldScene, oldSubScene);
 
         if (sceneChanged) {
