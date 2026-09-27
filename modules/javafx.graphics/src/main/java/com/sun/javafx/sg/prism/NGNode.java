@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -1977,12 +1977,35 @@ public abstract class NGNode {
     }
 
     /**
+     * Returns true when this node is entirely outside the clip of the given graphics.
+     *
+     * @return true, if this node is entirely outside the clip, false otherwise
+     */
+    private boolean isOutsideClip(Graphics g) {
+        if (transformedBounds.isEmpty() || g.getCameraNoClone() instanceof NGPerspectiveCamera) {
+            return false;
+        }
+
+        Rectangle clip = g.getClipRectNoClone();
+        BaseTransform tx = g.getTransformNoClone();
+        if (clip == null || !tx.is2D()) {
+            return false;
+        }
+        BaseBounds bounds = tx.transform(transformedBounds, TEMP_BOUNDS);
+        return bounds.getMaxX() <= clip.x  || bounds.getMaxY() <= clip.y
+                || bounds.getMinX() >= clip.x + clip.width || bounds.getMinY() >= clip.y + clip.height;
+    }
+
+    /**
      * Invoked only by the final render method. Implementations
      * of this method should make sure to save & restore the transform state.
      */
     protected void doRender(Graphics g) {
-
         g.setState3D(isShape3D());
+
+        if (isOutsideClip(g)) {
+            return;
+        }
 
         boolean preCullingTurnedOff = false;
         if (PrismSettings.dirtyOptsEnabled) {

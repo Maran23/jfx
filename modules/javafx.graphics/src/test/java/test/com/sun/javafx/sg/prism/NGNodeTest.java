@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -33,6 +33,7 @@ import com.sun.javafx.geom.transform.BaseTransform;
 import com.sun.javafx.geom.transform.Translate2D;
 import com.sun.javafx.sg.prism.NGNodeShim;
 import com.sun.javafx.sg.prism.NGPath;
+import com.sun.javafx.sg.prism.NGPerspectiveCamera;
 import com.sun.javafx.sg.prism.NGRectangle;
 import com.sun.prism.Graphics;
 import com.sun.prism.paint.Color;
@@ -610,7 +611,109 @@ public class NGNodeTest extends NGTestBase {
         assertEquals(1, clipRect.x);
     }
 
+    @Test
+    public void testNodeOutsideClipIsNotRendered() {
+        TestGraphics g = new TestGraphics(100, 100);
+        Rectangle node = new Rectangle(0, 0, 10, 10);
+        Rectangle clip = new Rectangle(20, 20, 10, 10);
+
+        render(g, node, clip);
+        assertFalse(n.rendered);
+    }
+
+    @Test
+    public void testNodeAdjacentToClipIsNotRendered() {
+        TestGraphics g = new TestGraphics(100, 100);
+        Rectangle node = new Rectangle(0, 0, 10, 10);
+        Rectangle clip = new Rectangle(10, 0, 10, 10);
+
+        render(g, node, clip);
+        assertFalse(n.rendered);
+    }
+
+    @Test
+    public void testNodeIntersectingClipIsRendered() {
+        TestGraphics g = new TestGraphics(100, 100);
+        Rectangle node = new Rectangle(0, 0, 10, 10);
+        Rectangle clip = new Rectangle(5, 5, 10, 10);
+
+        render(g, node, clip);
+        assertTrue(n.rendered);
+    }
+
+    @Test
+    public void testNodeMovedIntoClipByGraphicsTransformIsRendered() {
+        TestGraphics g = new TestGraphics(100, 100);
+        g.setTransform(BaseTransform.getTranslateInstance(20, 20));
+        Rectangle node = new Rectangle(0, 0, 10, 10);
+        Rectangle clip = new Rectangle(20, 20, 10, 10);
+
+        render(g, node, clip);
+        assertTrue(n.rendered);
+    }
+
+    @Test
+    public void testNodeMovedOutOfClipByGraphicsTransformIsNotRendered() {
+        TestGraphics g = new TestGraphics(100, 100);
+        g.setTransform(BaseTransform.getScaleInstance(3, 3));
+        Rectangle node = new Rectangle(0, 0, 10, 10);
+        Rectangle clip = new Rectangle(0, 30, 10, 10);
+
+        render(g, node, clip);
+        assertFalse(n.rendered);
+    }
+
+    @Test
+    public void testNodeOutsideClipIsRenderedWithPerspectiveCamera() {
+        TestGraphics g = new TestGraphics(100, 100);
+        g.setCamera(new NGPerspectiveCamera(false));
+        Rectangle node = new Rectangle(0, 0, 10, 10);
+        Rectangle clip = new Rectangle(20, 20, 10, 10);
+
+        render(g, node, clip);
+        assertTrue(n.rendered);
+    }
+
+    @Test
+    public void testNodeIsNotRenderedWhenMovedOutsideClip() {
+        TestGraphics g = new TestGraphics(100, 100);
+        Rectangle node = new Rectangle(0, 0, 10, 10);
+        Rectangle clip = new Rectangle(5, 5, 10, 10);
+        render(g, node, clip);
+        assertTrue(n.rendered);
+
+        n.rendered = false;
+        node = new Rectangle(20, 20, 10, 10);
+        render(g, node, clip);
+        assertFalse(n.rendered);
+    }
+
+    @Test
+    public void testNodeIsNotRenderedWhenClipMovedOutside() {
+        TestGraphics g = new TestGraphics(100, 100);
+        Rectangle node = new Rectangle(0, 0, 10, 10);
+        Rectangle clip = new Rectangle(5, 5, 10, 10);
+        render(g, node, clip);
+        assertTrue(n.rendered);
+
+        n.rendered = false;
+        clip = new Rectangle(20, 20, 10, 10);
+        render(g, node, clip);
+        assertFalse(n.rendered);
+    }
+
+    private void render(TestGraphics g, Rectangle node, Rectangle clip) {
+        RectBounds bounds = new RectBounds(node);
+        n.setContentBounds(bounds);
+        n.setTransformMatrix(BaseTransform.IDENTITY_TRANSFORM);
+        n.setTransformedBounds(bounds, false);
+
+        g.setClipRect(clip);
+        n.render(g);
+    }
+
     class NGNodeMock extends NGNodeShim {
+        boolean rendered = false;
         boolean opaqueRegionRecomputed = false;
         RectBounds computedOpaqueRegion = new RectBounds(0, 0, 10, 10);
 
@@ -634,7 +737,9 @@ public class NGNodeTest extends NGTestBase {
         }
 
         @Override
-        protected void renderContent(Graphics g) { }
+        protected void renderContent(Graphics g) {
+            rendered = true;
+        }
 
         @Override
         protected boolean hasOverlappingContents() {
