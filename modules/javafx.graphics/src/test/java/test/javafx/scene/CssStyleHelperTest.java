@@ -62,6 +62,7 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -120,10 +121,8 @@ public class CssStyleHelperTest {
                 + ".b { -fx-font-family: normal; }\n"
         );
         StyleManager.getInstance().setDefaultUserAgentStylesheet(stylesheet);
-        Pane A = new Pane();
-        A.getStyleClass().add("a");
-        Pane B = new Pane();
-        B.getStyleClass().add("b");
+        Pane A = createStyledPane("a");
+        Pane B = createStyledPane("b");
         Text C = new Text("C");
         Text D = new Text("D");
         Text E = new Text("E");
@@ -207,10 +206,8 @@ public class CssStyleHelperTest {
                 + ".b { -fx-font-style: normal; }\n"
         );
         StyleManager.getInstance().setDefaultUserAgentStylesheet(stylesheet);
-        Pane A = new Pane();
-        A.getStyleClass().add("a");
-        Pane B = new Pane();
-        B.getStyleClass().add("b");
+        Pane A = createStyledPane("a");
+        Pane B = createStyledPane("b");
         Text C = new Text("C");
         Text D = new Text("D");
         Text E = new Text("E");
@@ -253,16 +250,11 @@ public class CssStyleHelperTest {
                 + ".leaf { -fx-background-color: col}"
         );
         StyleManager.getInstance().setDefaultUserAgentStylesheet(stylesheet);
-        Pane A = new Pane();
-        A.getStyleClass().add("a");
-        Pane B = new Pane();
-        B.getStyleClass().add("b");
-        Pane C = new Pane();
-        C.getStyleClass().add("leaf");
-        Pane D = new Pane();
-        D.getStyleClass().add("leaf");
-        Pane E = new Pane();
-        E.getStyleClass().add("leaf");
+        Pane A = createStyledPane("a");
+        Pane B = createStyledPane("b");
+        Pane C = createStyledPane("leaf");
+        Pane D = createStyledPane("leaf");
+        Pane E = createStyledPane("leaf");
         root.getChildren().addAll(A, B);
         A.getChildren().addAll(C, D);
         B.getChildren().add(E);
@@ -306,12 +298,9 @@ public class CssStyleHelperTest {
         A.pseudoClassStateChanged(PseudoClass.getPseudoClass("ps1"), true);
         Pane B = new Pane();
         B.pseudoClassStateChanged(PseudoClass.getPseudoClass("ps2"), true);
-        Pane C = new Pane();
-        C.getStyleClass().add("leaf");
-        Pane D = new Pane();
-        D.getStyleClass().add("leaf");
-        Pane E = new Pane();
-        E.getStyleClass().add("leaf");
+        Pane C = createStyledPane("leaf");
+        Pane D = createStyledPane("leaf");
+        Pane E = createStyledPane("leaf");
         root.getChildren().addAll(A, B);
         A.getChildren().addAll(C, D);
         B.getChildren().add(E);
@@ -350,16 +339,11 @@ public class CssStyleHelperTest {
                 + ".b .leaf { -fx-background-color: blue; }\n"
         );
         StyleManager.getInstance().setDefaultUserAgentStylesheet(stylesheet);
-        Pane A = new Pane();
-        A.getStyleClass().add("a");
-        Pane B = new Pane();
-        B.getStyleClass().add("b");
-        Pane C = new Pane();
-        C.getStyleClass().add("leaf");
-        Pane D = new Pane();
-        D.getStyleClass().add("leaf");
-        Pane E = new Pane();
-        E.getStyleClass().add("leaf");
+        Pane A = createStyledPane("a");
+        Pane B = createStyledPane("b");
+        Pane C = createStyledPane("leaf");
+        Pane D = createStyledPane("leaf");
+        Pane E = createStyledPane("leaf");
         root.getChildren().addAll(A, B);
         A.getChildren().addAll(C, D);
         B.getChildren().add(E);
@@ -406,16 +390,11 @@ public class CssStyleHelperTest {
                 + ".leaf { visibility: inherit;}"
         );
         StyleManager.getInstance().setDefaultUserAgentStylesheet(stylesheet);
-        Pane A = new Pane();
-        A.getStyleClass().add("a");
-        Pane B = new Pane();
-        B.getStyleClass().add("b");
-        Pane C = new Pane();
-        C.getStyleClass().add("leaf");
-        Pane D = new Pane();
-        D.getStyleClass().add("leaf");
-        Pane E = new Pane();
-        E.getStyleClass().add("leaf");
+        Pane A = createStyledPane("a");
+        Pane B = createStyledPane("b");
+        Pane C = createStyledPane("leaf");
+        Pane D = createStyledPane("leaf");
+        Pane E = createStyledPane("leaf");
         root.getChildren().addAll(A, B);
         A.getChildren().addAll(C, D);
         B.getChildren().add(E);
@@ -455,10 +434,8 @@ public class CssStyleHelperTest {
                 + ".c { visibility: inherit;}"
         );
         StyleManager.getInstance().setDefaultUserAgentStylesheet(stylesheet);
-        Pane A = new Pane();
-        A.getStyleClass().add("a");
-        Pane C = new Pane();
-        C.getStyleClass().add("c");
+        Pane A = createStyledPane("a");
+        Pane C = createStyledPane("c");
         root.getChildren().addAll(A);
         A.getChildren().addAll(C);
         stage.show();
@@ -494,8 +471,7 @@ public class CssStyleHelperTest {
                 + ".b { -fx-font-style: normal; }\n"
         );
         StyleManager.getInstance().setDefaultUserAgentStylesheet(stylesheet);
-        Pane A = new Pane();
-        A.getStyleClass().add("a");
+        Pane A = createStyledPane("a");
         Text C = new Text("C");
         root.getChildren().addAll(A);
         A.getChildren().addAll(C);
@@ -530,8 +506,7 @@ public class CssStyleHelperTest {
                 + ".a:normal { -fx-font-style: normal; }\n"
         );
         StyleManager.getInstance().setDefaultUserAgentStylesheet(stylesheet);
-        Pane A = new Pane();
-        A.getStyleClass().add("a");
+        Pane A = createStyledPane("a");
         Text C = new Text("C");
         root.getChildren().addAll(A);
         A.getChildren().addAll(C);
@@ -565,8 +540,7 @@ public class CssStyleHelperTest {
                 + ".a { -fx-font-style: italic; }\n"
         );
         StyleManager.getInstance().setDefaultUserAgentStylesheet(stylesheet);
-        Pane A = new Pane();
-        A.getStyleClass().add("a");
+        Pane A = createStyledPane("a");
         Text C = new Text("C");
         root.getChildren().addAll(A);
         A.getChildren().addAll(C);
@@ -604,18 +578,12 @@ public class CssStyleHelperTest {
                 + ".child { -fx-background-color: col}"
         );
         StyleManager.getInstance().setDefaultUserAgentStylesheet(stylesheet);
-        Pane A = new Pane();
-        A.getStyleClass().add("a");
-        Pane B = new Pane();
-        B.getStyleClass().add("b");
-        Pane C = new Pane();
-        C.getStyleClass().add("child");
-        Pane D = new Pane();
-        D.getStyleClass().add("child");
-        Pane E = new Pane();
-        E.getStyleClass().add("child");
-        Pane F = new Pane();
-        F.getStyleClass().add("child");
+        Pane A = createStyledPane("a");
+        Pane B = createStyledPane("b");
+        Pane C = createStyledPane("child");
+        Pane D = createStyledPane("child");
+        Pane E = createStyledPane("child");
+        Pane F = createStyledPane("child");
         root.getChildren().addAll(A, B);
         A.getChildren().addAll(C, D);
         B.getChildren().add(E);
@@ -977,9 +945,7 @@ public class CssStyleHelperTest {
         );
 
         StyleManager.getInstance().setDefaultUserAgentStylesheet(stylesheet);
-        Pane a = new Pane();
-
-        a.getStyleClass().add("pane");
+        Pane a = createStyledPane("pane");
 
         root.getChildren().addAll(a);
 
@@ -1030,9 +996,7 @@ public class CssStyleHelperTest {
         );
 
         StyleManager.getInstance().setDefaultUserAgentStylesheet(stylesheet);
-        Pane a = new Pane();
-
-        a.getStyleClass().add("pane");
+        Pane a = createStyledPane("pane");
 
         root.getChildren().addAll(a);
 
@@ -1248,8 +1212,48 @@ public class CssStyleHelperTest {
         assertEquals(List.of(1.0, 2.0, 1.5, 1.0), trace);
     }
 
+    /**
+     * When a style is changed in a listener, while the css property is reset to its initial value
+     * due to a pseudo-class change, it must not be applied when it shouldn't.
+     * <br>
+     * Because the style precedence is: USER < AUTHOR, this change should not have any effect.
+     */
+    @Test
+    public void testAuthorStyleWinsOverListenerWriteDuringPseudoClassReset() {
+        scene.getStylesheets().add(toDataURL("""
+                .node:hover { -fx-translate-x: 10; }
+                .node { -fx-opacity: 0.5; }
+                """));
+
+        Pane node = createStyledPane("node");
+        root.getChildren().add(node);
+
+        node.pseudoClassStateChanged(PseudoClass.getPseudoClass("hover"), true);
+        root.applyCss();
+        assertEquals(10, node.getTranslateX());
+        assertEquals(0.5, node.getOpacity());
+
+        node.translateXProperty().addListener((_, _, _) -> node.setOpacity(0.2));
+
+        node.pseudoClassStateChanged(PseudoClass.getPseudoClass("hover"), false);
+        root.applyCss();
+        assertEquals(0, node.getTranslateX());
+        assertEquals(0.5, node.getOpacity());
+
+        node.setOpacity(0.2);
+        assertEquals(0.2, node.getOpacity());
+        root.applyCss();
+        assertEquals(0.5, node.getOpacity());
+    }
+
+    private Pane createStyledPane(String styleClass) {
+        Pane pane = new Pane();
+        pane.getStyleClass().add(styleClass);
+        return pane;
+    }
+
     private static String toDataURL(String stylesheet) {
-        return "data:text/plain;base64," + Base64.getEncoder().encodeToString(stylesheet.getBytes(StandardCharsets.UTF_8));
+        return "data:text/css;base64," + Base64.getEncoder().encodeToString(stylesheet.getBytes(StandardCharsets.UTF_8));
     }
 
     /**
