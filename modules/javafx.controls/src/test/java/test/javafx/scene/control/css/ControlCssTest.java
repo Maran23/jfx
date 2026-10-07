@@ -34,8 +34,10 @@ import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
+import javafx.scene.control.SkinBase;
 import javafx.scene.control.Tab;
 import javafx.scene.control.TabPane;
+import javafx.scene.control.TextField;
 import javafx.scene.layout.Pane;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
@@ -51,6 +53,7 @@ import java.util.Base64;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
@@ -263,6 +266,51 @@ public class ControlCssTest {
 
         // There should be only a single change.
         assertEquals(List.of(new Insets(80)), observed);
+    }
+
+    /**
+     * A property set by CSS on a replaced skin can not be reached by its css metadata anymore,
+     * so it must not be reset when it is no longer styled.
+     */
+    @Test
+    void testPropertyOfReplacedSkinIsNotResetWhenNoLongerStyled() {
+        TextField textField = new TextField();
+        textField.getStyleClass().add("red");
+
+        Scene scene = new Scene(new StackPane(textField));
+        scene.getStylesheets().add(toBase64("""
+                .red { -fx-display-caret: false; }
+                """));
+        stageLoader = new StageLoader(scene);
+
+        textField.setSkin(new SkinBase<>(textField) {});
+        textField.getStyleClass().remove("red");
+
+        assertDoesNotThrow(() -> Toolkit.getToolkit().firePulse());
+    }
+
+    /**
+     * The font set on the label by its text recalculates the font relative padding,
+     * which must still be reset to its initial value when it is no longer styled.
+     */
+    @Test
+    void testRecalculatedRelativePropertyIsResetToInitialValue() {
+        Label label = new Label("Test");
+        label.getStyleClass().add("padded");
+
+        Scene scene = new Scene(new StackPane(label));
+        scene.getStylesheets().add(toBase64("""
+                .padded { -fx-padding: 1em; }
+                .padded .text { -fx-font-size: 20px; }
+                """));
+        stageLoader = new StageLoader(scene);
+
+        assertEquals(new Insets(20), label.getPadding());
+
+        label.getStyleClass().remove("padded");
+        Toolkit.getToolkit().firePulse();
+
+        assertEquals(Insets.EMPTY, label.getPadding());
     }
 
     private static void swapRootWhenAddedToScene(Node node) {

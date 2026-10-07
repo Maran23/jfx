@@ -53,6 +53,7 @@ import javafx.css.StyleConverter;
 import javafx.css.StyleOrigin;
 import javafx.css.Stylesheet;
 import javafx.css.converter.SizeConverter;
+import javafx.beans.value.ChangeListener;
 import javafx.geometry.Insets;
 import javafx.scene.NodeShim;
 import javafx.scene.Scene;
@@ -62,6 +63,7 @@ import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
 import javafx.scene.paint.Color;
 import javafx.scene.paint.Paint;
+import javafx.scene.text.Font;
 import javafx.scene.text.Text;
 import javafx.stage.Stage;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
@@ -74,6 +76,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.EnumSource;
 import test.com.sun.javafx.pgstub.StubToolkit;
 
@@ -1417,23 +1420,7 @@ public class CssStyleHelperTest {
         root.getStyleClass().add("container");
 
         Pane leaf = createPaneWithStyle("leaf");
-        StackPane parent = new StackPane(leaf);
-        root.getChildren().add(parent);
-
-        Toolkit.getToolkit().firePulse();
-        assertNull(leaf.getBackground(), "nothing matches .parent yet");
-
-        parent.getChildren().add(new StackPane());
-        assertEquals(CssFlags.DIRTY_BRANCH, NodeShim.getCSSFlags(parent),
-                "parent must be DIRTY_BRANCH so reapplyCSS() defers");
-
-        // Promote it to REAPPLY.
-        parent.getStyleClass().add("parent");
-        assertEquals(CssFlags.REAPPLY, NodeShim.getCSSFlags(parent));
-
-        // This child walks up to find its first styleable ancestor and rebuilds the parents helper,
-        // now with ".parent" style class.
-        parent.getChildren().add(new StackPane());
+        rebuildParentHelperEarly(leaf);
 
         Toolkit.getToolkit().firePulse();
 
@@ -1442,14 +1429,17 @@ public class CssStyleHelperTest {
     }
 
     /**
-     * A style class added to an unstyled node in the middle of a chain must restyle descendants
-     * whose styles depend on it.
+     * A style class added to an unstyled node in a chain must restyle the descendants whose styles depend on it.
      */
-    @Test
-    void testLeafRestyledWhenAncestorInUnstyledChainGainsStyleClass() {
-        scene.getStylesheets().add(toDataURL("""
-                .parent .leaf { -fx-background-color: green; }
-                """));
+    @ParameterizedTest
+    @CsvSource(delimiter = ';', value = {
+        ".parent .leaf;0",
+        ".parent .leaf;5",
+        ".parent > .leaf;9",
+        ".parent > *;9"
+    })
+    void testLeafRestyledWhenAncestorInUnstyledChainGainsStyleClass(String selector, int ancestorIndex) {
+        scene.getStylesheets().add(toDataURL(selector + " { -fx-background-color: green; }"));
         stage.show();
 
         List<StackPane> chain = buildUnstyledChain(10);
@@ -1457,37 +1447,12 @@ public class CssStyleHelperTest {
         chain.getLast().getChildren().add(leaf);
 
         Toolkit.getToolkit().firePulse();
-        assertNull(leaf.getBackground(), "nothing matches .leaf yet");
+        assertNull(leaf.getBackground(), "nothing matches the leaf yet");
 
-        StackPane middleNode = chain.get(5);
-        middleNode.getStyleClass().add("parent");
+        chain.get(ancestorIndex).getStyleClass().add("parent");
         Toolkit.getToolkit().firePulse();
 
         assertEquals(Color.GREEN, getBackgroundColor(leaf));
-    }
-
-    /**
-     * A style class added to an unstyled node must restyle its direct children whose styles depend on it.
-     */
-    @Test
-    void testLeafStyledByAncestorChildSelectorThroughUnstyledChain() {
-        scene.getStylesheets().add(toDataURL("""
-                .parent > * { -fx-background-color: blue; }
-                """));
-        stage.show();
-
-        List<StackPane> chain = buildUnstyledChain(10);
-        StackPane parent = chain.getLast();
-        StackPane leaf = new StackPane();
-        parent.getChildren().add(leaf);
-
-        Toolkit.getToolkit().firePulse();
-        assertNull(leaf.getBackground(), "nothing matches the leaf yet");
-
-        parent.getStyleClass().add("parent");
-        Toolkit.getToolkit().firePulse();
-
-        assertEquals(Color.BLUE, getBackgroundColor(leaf));
     }
 
     /**
@@ -1506,19 +1471,7 @@ public class CssStyleHelperTest {
         root.getStyleClass().add("container");
 
         Pane leaf = createPaneWithStyle("leaf");
-        StackPane parent = new StackPane(leaf);
-        root.getChildren().add(parent);
-
-        Toolkit.getToolkit().firePulse();
-        assertNull(leaf.getBackground(), "nothing matches .parent");
-
-        parent.getChildren().add(new StackPane());
-        assertEquals(CssFlags.DIRTY_BRANCH, NodeShim.getCSSFlags(parent));
-
-        parent.getStyleClass().add("parent");
-        assertEquals(CssFlags.REAPPLY, NodeShim.getCSSFlags(parent));
-
-        parent.getChildren().add(new StackPane());
+        StackPane parent = rebuildParentHelperEarly(leaf);
         assertEquals(CssFlags.REAPPLY, NodeShim.getCSSFlags(parent));
 
         // Marks the parent stale again, but ends up with the very same style map, so the REAPPLY
@@ -1612,7 +1565,7 @@ public class CssStyleHelperTest {
         leaf.getChildren().add(new Pane());
         int newWalks = walks.get();
 
-        assertEquals(newWalks, baseline);
+        assertEquals(baseline, newWalks);
     }
 
     /**
@@ -1711,6 +1664,273 @@ public class CssStyleHelperTest {
         assertEquals(1, node.getOpacity());
     }
 
+    /**
+     * A property set by a listener running during the reset of a property no longer styled,
+     * must still be overridden by the new styles.
+     */
+    @Test
+    void testNewStyleOverridesValueSetByResetListener() {
+        scene.getStylesheets().add(toDataURL("""
+                .old { -fx-translate-x: 10; }
+                .new { -fx-opacity: 0.5; }
+                """));
+
+        Pane node = createPaneWithStyle("old");
+        root.getChildren().add(node);
+        root.applyCss();
+
+        assertEquals(10, node.getTranslateX());
+
+        node.translateXProperty().addListener((_, _, _) -> node.setOpacity(0.2));
+
+        node.getStyleClass().setAll("new");
+        root.applyCss();
+
+        assertEquals(0, node.getTranslateX());
+        assertEquals(0.5, node.getOpacity());
+    }
+
+    /**
+     * A property set by a listener running during the reset of a property no longer styled after a pseudo class
+     * change, must still be overridden by the styles.
+     */
+    @Test
+    void testStyleOverridesValueSetByResetListenerOnPseudoClassChange() {
+        scene.getStylesheets().add(toDataURL("""
+                .node:hover { -fx-translate-x: 10; }
+                .node { -fx-opacity: 0.5; }
+                """));
+
+        Pane node = createPaneWithStyle("node");
+        root.getChildren().add(node);
+        node.pseudoClassStateChanged(PseudoClass.getPseudoClass("hover"), true);
+        root.applyCss();
+
+        assertEquals(10, node.getTranslateX());
+        assertEquals(0.5, node.getOpacity());
+
+        node.translateXProperty().addListener((_, _, _) -> node.setOpacity(0.2));
+
+        node.pseudoClassStateChanged(PseudoClass.getPseudoClass("hover"), false);
+        root.applyCss();
+
+        assertEquals(0, node.getTranslateX());
+        assertEquals(0.5, node.getOpacity());
+    }
+
+    /**
+     * A property set by the user, styled and unstyled again must be reset with its origin at the time it was styled.
+     */
+    @Test
+    void testResetRestoresOriginOfLastStyling() {
+        scene.getStylesheets().add(toDataURL("""
+                .kept { -fx-padding: 3; }
+                .styled { -fx-translate-x: 10; }
+                """));
+
+        Pane node = createPaneWithStyle("kept");
+        node.getStyleClass().add("styled");
+        root.getChildren().add(node);
+        root.applyCss();
+
+        node.getStyleClass().remove("styled");
+        root.applyCss();
+
+        assertEquals(0, node.getTranslateX());
+
+        node.setTranslateX(5);
+        node.getStyleClass().add("styled");
+        root.applyCss();
+
+        assertEquals(10, node.getTranslateX());
+
+        node.getStyleClass().remove("styled");
+        root.applyCss();
+
+        StyleableProperty<Number> translateX = (StyleableProperty<Number>) node.translateXProperty();
+        assertEquals(StyleOrigin.USER, translateX.getStyleOrigin());
+    }
+
+    /**
+     * An inherited property is not reset when the style helper is replaced, as long as an ancestor still styles it.
+     */
+    @Test
+    void testInheritedPropertyNotResetWhenStillStyledByAncestor() {
+        scene.getStylesheets().add(toDataURL("""
+                .a { -fx-font-size: 20; }
+                .b { -fx-font-size: 20; }
+                """));
+
+        Text text = new Text("Test");
+        Pane parent = createPaneWithStyle("a");
+        parent.getChildren().add(text);
+        root.getChildren().add(parent);
+        root.applyCss();
+
+        assertEquals(20, text.getFont().getSize());
+
+        List<Font> observed = new ArrayList<>();
+        text.fontProperty().addListener((_, _, newValue) -> observed.add(newValue));
+
+        parent.getStyleClass().setAll("b");
+        root.applyCss();
+
+        assertEquals(List.of(), observed);
+    }
+
+    /**
+     * A node losing all its styles must not block the inheritance from its ancestors to its children.
+     */
+    @Test
+    void testInheritanceThroughNodeThatLostItsStyles() {
+        scene.getStylesheets().add(toDataURL("""
+                .a { -fx-font: bold 20 monospaced; }
+                .old { -fx-translate-x: 10; }
+                """));
+
+        Text text = new Text("Test");
+        Pane middle = createPaneWithStyle("old");
+        middle.getChildren().add(text);
+        Pane parent = createPaneWithStyle("a");
+        parent.getChildren().add(middle);
+        root.getChildren().add(parent);
+        root.applyCss();
+
+        Font expected = text.getFont();
+        assertEquals(20, expected.getSize());
+
+        middle.getStyleClass().clear();
+        root.applyCss();
+
+        assertEquals(0, middle.getTranslateX());
+        assertEquals(expected, text.getFont());
+    }
+
+    /**
+     * A property set by a style helper after a listener replaced its style class while applying its styles,
+     * must still be reset when no longer styled.
+     */
+    @ParameterizedTest
+    @CsvSource({
+        "newer,    1",
+        "unstyled, 0"
+    })
+    void testPropertySetWhileReapplyingIsResetWhenNoLongerStyled(String styleClass, double padding) {
+        scene.getStylesheets().add(toDataURL("""
+                .old { -fx-translate-x: 10; }
+                .new { -fx-opacity: 0.5; }
+                .newer { -fx-padding: 1; }
+                """));
+
+        Pane node = createPaneWithStyle("old");
+        root.getChildren().add(node);
+        root.applyCss();
+
+        node.translateXProperty().addListener((_, _, _) -> node.getStyleClass().setAll(styleClass));
+
+        node.getStyleClass().setAll("new");
+        root.applyCss();
+        root.applyCss();
+
+        assertEquals(0, node.getTranslateX());
+        assertEquals(1, node.getOpacity());
+        assertEquals(new Insets(padding), node.getPadding());
+    }
+
+    /**
+     * When a listener reapplies the CSS while the styles are applied during the layout of the parent,
+     * the CSS is processed right away. The REAPPLY must still be deferred until the styles are applied.
+     */
+    @Test
+    void testReapplyDuringLayoutIsDeferredWhileApplyingStyles() {
+        scene.getStylesheets().add(toDataURL("""
+                .old { -fx-translate-x: 10; }
+                .new { -fx-opacity: 0.5; }
+                """));
+
+        Pane node = createPaneWithStyle("old");
+        Pane parent = new Pane(node) {
+            @Override
+            protected void layoutChildren() {
+                node.applyCss();
+                super.layoutChildren();
+            }
+        };
+        root.getChildren().add(parent);
+        root.applyCss();
+
+        node.translateXProperty().addListener((_, _, _) -> node.getStyleClass().setAll("unstyled"));
+
+        node.getStyleClass().setAll("new");
+        parent.requestLayout();
+        parent.layout();
+        root.applyCss();
+
+        assertEquals(0, node.getTranslateX());
+        assertEquals(1, node.getOpacity());
+    }
+
+    /**
+     * When a listener replaces the style helper of an ancestor while the styles of a node are applied,
+     * the node must not cache values resolved with the new styles of the ancestor for its old ones.
+     */
+    @Test
+    void testAncestorReplacedWhileApplyingStylesDoesNotPolluteCache() {
+        scene.getStylesheets().add(toDataURL("""
+                .red { -my-color: red; }
+                .blue { -my-color: blue; }
+                .node { -fx-translate-x: 1; -fx-background-color: -my-color; }
+                """));
+
+        Pane node = new Pane();
+        Pane parent = createPaneWithStyle("red", node);
+        root.getChildren().add(parent);
+        root.applyCss();
+
+        ChangeListener<Number> listener = (_, _, _) -> parent.getStyleClass().setAll("blue");
+        node.translateXProperty().addListener(listener);
+
+        node.getStyleClass().setAll("node");
+        root.applyCss();
+        root.applyCss();
+
+        assertEquals(Color.BLUE, getBackgroundColor(node));
+
+        node.translateXProperty().removeListener(listener);
+        parent.getStyleClass().setAll("red");
+        root.applyCss();
+
+        assertEquals(Color.RED, getBackgroundColor(node));
+    }
+
+    /**
+     * A new node styled by a listener while the styles of another node are applied, is styled right away.
+     */
+    @Test
+    void testNewNodeIsStyledByApplyCssWhileApplyingStyles() {
+        scene.getStylesheets().add(toDataURL("""
+                .node { -fx-translate-x: 1; }
+                .other { -fx-padding: 5; }
+                """));
+
+        Pane node = new Pane();
+        root.getChildren().add(node);
+        root.applyCss();
+
+        List<Insets> measured = new ArrayList<>();
+        node.translateXProperty().addListener((_, _, _) -> {
+            Pane other = createPaneWithStyle("other");
+            root.getChildren().add(other);
+            other.applyCss();
+            measured.add(other.getPadding());
+        });
+
+        node.getStyleClass().setAll("node");
+        root.applyCss();
+
+        assertEquals(List.of(new Insets(5)), measured);
+    }
+
     private static class WalkCountingPane extends Pane {
 
         private final AtomicInteger walks;
@@ -1725,6 +1945,31 @@ public class CssStyleHelperTest {
             walks.incrementAndGet();
             return super.getStyleableParent();
         }
+    }
+
+    /**
+     * Adds a style class to the parent of the leaf while its CSS is deferred (REAPPLY),
+     * then adds a child that rebuilds the parents style helper before the next pulse.
+     */
+    private StackPane rebuildParentHelperEarly(Pane leaf) {
+        StackPane parent = new StackPane(leaf);
+        root.getChildren().add(parent);
+
+        Toolkit.getToolkit().firePulse();
+        assertNull(leaf.getBackground(), "nothing matches .parent yet");
+
+        parent.getChildren().add(new StackPane());
+        assertEquals(CssFlags.DIRTY_BRANCH, NodeShim.getCSSFlags(parent),
+                "parent must be DIRTY_BRANCH so reapplyCSS() defers");
+
+        // Promote it to REAPPLY.
+        parent.getStyleClass().add("parent");
+        assertEquals(CssFlags.REAPPLY, NodeShim.getCSSFlags(parent));
+
+        // This child walks up to find its first styleable ancestor and rebuilds the parents helper,
+        // now with ".parent" style class.
+        parent.getChildren().add(new StackPane());
+        return parent;
     }
 
     private Pane createPaneWithStyle(String styleClass, Region... children) {
@@ -1751,7 +1996,7 @@ public class CssStyleHelperTest {
     }
 
     private static String toDataURL(String stylesheet) {
-        return "data:text/plain;base64," + Base64.getEncoder().encodeToString(stylesheet.getBytes(StandardCharsets.UTF_8));
+        return "data:text/css;base64," + Base64.getEncoder().encodeToString(stylesheet.getBytes(StandardCharsets.UTF_8));
     }
 
     /**

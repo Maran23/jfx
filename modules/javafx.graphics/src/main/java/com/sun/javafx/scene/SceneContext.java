@@ -71,7 +71,7 @@ public final class SceneContext implements Scene.Preferences, MediaQueryContext 
     /**
      * Called by {@link Node} when CSS is reapplied for the root node.
      */
-    public void notifyReapplyCSS() {
+    public void notifyProcessCSS() {
         // Clear the registered context-aware queries, as they will be re-registered on the next CSS pass
         // if they are evaluated (i.e. at least one selector that depends on the media query matches).
         viewportSizeAwareQueries.clear();

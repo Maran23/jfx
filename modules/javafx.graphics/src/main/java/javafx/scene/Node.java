@@ -9819,7 +9819,7 @@ public abstract sealed class Node
     CssFlags cssFlag = CssFlags.CLEAN;
 
     /**
-     * A {@code reapplyCSS()} was deferred or happened during the rebuild of {@link #styleHelper}, so it outdated.
+     * A {@code reapplyCSS()} is pending, so the {@link #styleHelper} is outdated.
      * A descendant asking for it during its own {@link CssStyleHelper#createStyleHelper(Node)} must recreate it first.
      */
     boolean cssHelperStale;
@@ -9937,35 +9937,14 @@ public abstract sealed class Node
     }
 
     final void reapplyCSS() {
-        var scene = getScene();
-        if (scene == null) return;
+        if (getScene() == null) return;
 
-        if (cssFlag == CssFlags.REAPPLY) {
-            cssHelperStale = true;
-            return;
-        }
+        // The style helper is recreated when the CSS is processed (JDK-8193445, JDK-8095580).
+        cssHelperStale = true;
+        if (cssFlag == CssFlags.REAPPLY) return;
 
-        if (cssFlag == CssFlags.DIRTY_BRANCH) {
-            // JDK-8193445 - don't reapply CSS from here
-            // Defer CSS application to this Node by marking cssFlag as REAPPLY
-            cssFlag = CssFlags.REAPPLY;
-            cssHelperStale = true;
-            return;
-        }
-
-        // JDK-8095580 - don't reapply CSS in the middle of an update
-        if (cssFlag == CssFlags.UPDATE) {
-            cssFlag = CssFlags.REAPPLY;
-            cssHelperStale = true;
-            notifyParentsOfInvalidatedCSS();
-            return;
-        }
-
-        if (scene.getRoot() == this) {
-            SceneHelper.getSceneContext(scene).notifyReapplyCSS();
-        }
-
-        recreateStyleHelper();
+        boolean clean = cssFlag == CssFlags.CLEAN;
+        cssFlag = CssFlags.REAPPLY;
 
         //
         // One idiom employed by developers is to, during the layout pass,
@@ -9976,12 +9955,11 @@ public abstract sealed class Node
         // apply the CSS immediately and not add it to the scene's queue
         // for deferred action.
         //
-        if (getParent() != null && getParent().isPerformingLayout()) {
+        if (clean && getParent() != null && getParent().isPerformingLayout()) {
             NodeHelper.processCSS(this);
         } else {
             notifyParentsOfInvalidatedCSS();
         }
-
     }
 
     //
@@ -9996,6 +9974,12 @@ public abstract sealed class Node
     private void recreateStyleHelper() {
         // CSS state is "REAPPLY"
         cssFlag = CssFlags.REAPPLY;
+
+        // The style helper is applying its styles right now, so it is recreated with the next CSS pass.
+        if (CssStyleHelper.isTransitionInProgress(this)) {
+            cssHelperStale = true;
+            return;
+        }
 
         final boolean updateChildren = CssStyleHelper.createStyleHelper(this);
 
@@ -10163,21 +10147,25 @@ public abstract sealed class Node
      * Note: This method MUST only be called via its accessor method.
      */
     private void doProcessCSS() {
+        if (cssFlag == CssFlags.CLEAN) {
+            return;
+        }
 
-        // Nothing to do...
-        if (cssFlag == CssFlags.CLEAN) return;
+        // The style helper is applying its styles right now, so it is recreated with the next CSS pass.
+        if (CssStyleHelper.isTransitionInProgress(this)) {
+            notifyParentsOfInvalidatedCSS();
+            return;
+        }
 
-        // if REAPPLY was deferred, process it now...
         if (cssFlag == CssFlags.REAPPLY) {
             if (getScene() instanceof Scene scene && scene.getRoot() == this) {
-                SceneHelper.getSceneContext(scene).notifyReapplyCSS();
+                SceneHelper.getSceneContext(scene).notifyProcessCSS();
             }
 
             recreateStyleHelper();
         }
 
-        // Clear the flag first in case the flag is set to something
-        // other than clean by downstream processing.
+        // Clear the flag first in case the flag is set to something other than clean by downstream processing.
         cssFlag = CssFlags.CLEAN;
 
         // Transition to the new state and apply styles

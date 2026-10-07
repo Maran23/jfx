@@ -585,6 +585,7 @@ public class StyleManagerTest {
 
         StyleManagerShim sm = StyleManagerShim.getInstance();
         sm.setDefaultUserAgentStylesheet("/test/com/sun/javafx/css/ua0.css");
+        scene.getRoot().applyCss();
 
         int index = sm.platformUserAgentStylesheetContainers_indexOf("/test/com/sun/javafx/css/ua0.css");
         assertEquals(0, index);
@@ -671,6 +672,7 @@ public class StyleManagerTest {
         assertEquals(-1, index);
 
         subScene.setUserAgentStylesheet("/test/com/sun/javafx/css/ua1.css");
+        scene.getRoot().applyCss();
 
         index = sm.userAgentStylesheetContainers_indexOf("/test/com/sun/javafx/css/ua1.css");
         assertEquals(0,index);
@@ -979,6 +981,7 @@ public class StyleManagerTest {
         assertEquals(5, container.parentUsers_list_size());
 
         scene.setRoot(new Group());
+        scene.getRoot().applyCss();
         assertFalse(sm.stylesheetContainerMap_containsKey("/test/com/sun/javafx/css/ua0.css"));
         assertFalse(StyleManager.cacheContainerMap.containsKey(root));
         assertTrue(StyleManager.cacheContainerMap.containsKey(scene.getRoot()));
