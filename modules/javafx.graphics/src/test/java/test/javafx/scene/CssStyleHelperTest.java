@@ -1337,6 +1337,39 @@ public class CssStyleHelperTest {
         assertEquals(1, node.getValue());
     }
 
+    /**
+     * A failing reset must be reported as error and retried by a later CSS pass.
+     */
+    @Test
+    void testFailedResetIsReportedAndRetried() {
+        scene.getStylesheets().add(toDataURL("""
+                .node:hover { -fx-value: 10; }
+                .node:pressed { -fx-opacity: 0.5; }
+                """));
+
+        TemporarilyUnsettableControl node = new TemporarilyUnsettableControl();
+        node.getStyleClass().add("node");
+        root.getChildren().add(node);
+        node.pseudoClassStateChanged(PseudoClass.getPseudoClass("hover"), true);
+        root.applyCss();
+
+        assertEquals(10, node.getValue());
+
+        node.failOnApply = true;
+        node.pseudoClassStateChanged(PseudoClass.getPseudoClass("hover"), false);
+        root.applyCss();
+
+        assertEquals(10, node.getValue());
+        assertEquals(1, CssParser.errorsProperty().size());
+        assertEquals(PropertySetError.class, CssParser.errorsProperty().getFirst().getClass());
+
+        node.failOnApply = false;
+        node.pseudoClassStateChanged(PseudoClass.getPseudoClass("pressed"), true);
+        root.applyCss();
+
+        assertEquals(1, node.getValue());
+    }
+
     private static String toDataURL(String stylesheet) {
         return "data:text/plain;base64," + Base64.getEncoder().encodeToString(stylesheet.getBytes(StandardCharsets.UTF_8));
     }
@@ -1476,7 +1509,7 @@ public class CssStyleHelperTest {
     }
 
     /**
-     * A Pane subclass with one extra styleable property, "-fx-value", which can be made non-settable.
+     * A Pane subclass with one extra styleable property, "-fx-value", which can be made non-settable or failing.
      */
     private static final class TemporarilyUnsettableControl extends Pane {
 
@@ -1502,8 +1535,18 @@ public class CssStyleHelperTest {
         }
 
         private boolean settable = true;
+        private boolean failOnApply;
 
         private final StyleableDoubleProperty value = new StyleableDoubleProperty(1.0) {
+            @Override
+            public void applyStyle(StyleOrigin origin, Number v) {
+                if (failOnApply) {
+                    throw new IllegalStateException("failOnApply");
+                }
+
+                super.applyStyle(origin, v);
+            }
+
             @Override public Object getBean() { return TemporarilyUnsettableControl.this; }
             @Override public String getName() { return "value"; }
             @Override public CssMetaData<TemporarilyUnsettableControl, Number> getCssMetaData() { return VALUE; }
