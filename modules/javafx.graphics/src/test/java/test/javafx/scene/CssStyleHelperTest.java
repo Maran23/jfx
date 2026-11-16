@@ -44,11 +44,13 @@ import javafx.css.CssParser.ParseError;
 import javafx.css.CssParser.ParseError.PropertySetError;
 import javafx.css.PseudoClass;
 import javafx.css.Styleable;
+import javafx.css.StyleableBooleanProperty;
 import javafx.css.StyleableDoubleProperty;
 import javafx.css.StyleableProperty;
 import javafx.css.StyleConverter;
 import javafx.css.StyleOrigin;
 import javafx.css.Stylesheet;
+import javafx.css.converter.BooleanConverter;
 import javafx.css.converter.SizeConverter;
 import javafx.geometry.Insets;
 import javafx.scene.Scene;
@@ -1405,7 +1407,6 @@ public class CssStyleHelperTest {
      * (like a skin property after the skin was removed), must not be reset anymore.
      */
     @Test
-    @Disabled("JDK-8397428")
     void testRemovedMetadataIsNotResetOnStyleMapChange() {
         scene.getStylesheets().add(toDataURL("""
                 .node { -fx-extra: 10; }
@@ -1424,6 +1425,78 @@ public class CssStyleHelperTest {
         root.applyCss();
 
         assertEquals(10, node.getExtra());
+    }
+
+    @Test
+    void testReplacedMetadataIsResetOnStyleMapChange() {
+        scene.getStylesheets().add(toDataURL("""
+                .node { -fx-extra: 10; }
+                """));
+
+        DummyControl node = new DummyControl();
+        node.attachExtraProperty();
+        node.getStyleClass().add("node");
+        root.getChildren().add(node);
+        root.applyCss();
+
+        assertEquals(10, node.getExtra());
+
+        node.useAlternativeExtraMetaData();
+        node.getStyleClass().remove("node");
+        root.applyCss();
+
+        assertEquals(1, node.getExtra());
+    }
+
+    @Test
+    void testReplacedMetadataOfOtherTypeIsResetToItsOwnInitialValue() {
+        scene.getStylesheets().add(toDataURL("""
+                .a { -fx-extra: 10; }
+                .b { -fx-extra: true; }
+                """));
+
+        DummyControl node = new DummyControl();
+        node.attachExtraProperty();
+        node.getStyleClass().add("a");
+        root.getChildren().add(node);
+        root.applyCss();
+
+        assertEquals(10, node.getExtra());
+
+        node.useFlagMetaData();
+        node.getStyleClass().setAll("b");
+        root.applyCss();
+
+        assertTrue(node.isFlag());
+
+        node.getStyleClass().clear();
+        root.applyCss();
+
+        assertFalse(node.isFlag());
+    }
+
+    @Test
+    void testReplacedMetadataIsResetOnPseudoClassChange() {
+        scene.getStylesheets().add(toDataURL("""
+                .node:hover { -fx-extra: 10; }
+                """));
+
+        DummyControl node = new DummyControl();
+        node.attachExtraProperty();
+        node.getStyleClass().add("node");
+        root.getChildren().add(node);
+        node.pseudoClassStateChanged(PseudoClass.getPseudoClass("hover"), true);
+        root.applyCss();
+
+        assertEquals(10, node.getExtra());
+
+        node.useAlternativeExtraMetaData();
+        root.applyCss();
+
+        node.pseudoClassStateChanged(PseudoClass.getPseudoClass("hover"), false);
+        root.applyCss();
+
+        assertEquals(1, node.getExtra());
     }
 
 
@@ -1510,16 +1583,64 @@ public class CssStyleHelperTest {
             @Override public CssMetaData<DummyControl, Number> getCssMetaData() { return EXTRA; }
         };
 
-        private boolean extraAttached;
+        // A different metadata for the same property, like a custom skin could provide.
+        private static final CssMetaData<DummyControl, Number> ALTERNATIVE_EXTRA =
+            new CssMetaData<>("-fx-extra", SizeConverter.getInstance(), 1.0) {
+                @Override
+                public boolean isSettable(DummyControl node) {
+                    return !node.extra.isBound();
+                }
+
+                @Override
+                public StyleableProperty<Number> getStyleableProperty(DummyControl node) {
+                    return node.extra;
+                }
+            };
+
+        // A metadata with the same name, but for a different property of another type.
+        private static final CssMetaData<DummyControl, Boolean> FLAG =
+            new CssMetaData<>("-fx-extra", BooleanConverter.getInstance(), false) {
+                @Override
+                public boolean isSettable(DummyControl node) {
+                    return !node.flag.isBound();
+                }
+
+                @Override
+                public StyleableProperty<Boolean> getStyleableProperty(DummyControl node) {
+                    return node.flag;
+                }
+            };
+
+        private final StyleableBooleanProperty flag = new StyleableBooleanProperty(false) {
+            @Override public Object getBean() { return DummyControl.this; }
+            @Override public String getName() { return "flag"; }
+            @Override public CssMetaData<DummyControl, Boolean> getCssMetaData() { return FLAG; }
+        };
+
+        private CssMetaData<DummyControl, ?> extraMetaData;
         private List<CssMetaData<? extends Styleable, ?>> cachedMetaData;
 
+        void useFlagMetaData() {
+            extraMetaData = FLAG;
+            cachedMetaData = null;
+        }
+
+        boolean isFlag() {
+            return flag.get();
+        }
+
         void attachExtraProperty() {
-            extraAttached = true;
+            extraMetaData = EXTRA;
+            cachedMetaData = null;
+        }
+
+        void useAlternativeExtraMetaData() {
+            extraMetaData = ALTERNATIVE_EXTRA;
             cachedMetaData = null;
         }
 
         void detachExtraProperty() {
-            extraAttached = false;
+            extraMetaData = null;
             cachedMetaData = null;
         }
 
@@ -1532,8 +1653,8 @@ public class CssStyleHelperTest {
             if (cachedMetaData == null) {
                 List<CssMetaData<? extends Styleable, ?>> list = new ArrayList<>(Pane.getClassCssMetaData());
 
-                if (extraAttached) {
-                    list.add(EXTRA);
+                if (extraMetaData != null) {
+                    list.add(extraMetaData);
                 }
 
                 cachedMetaData = Collections.unmodifiableList(list);

@@ -938,10 +938,65 @@ final class CssStyleHelper {
             return;
         }
 
-        List<CssMetaData<? extends Styleable, ?>> styleables = node.getCssMetaData();
         resetProperties(node, cssMetaData ->
-                (cssMetaData == TransitionDefinitionCssMetaData.getInstance() || styleables.contains(cssMetaData))
-                && getCalculatedValue(node, cssMetaData, styleMap, transitionStates, cachedFont, cacheEntry) == SKIP);
+                getCalculatedValue(node, cssMetaData, styleMap, transitionStates, cachedFont, cacheEntry) == SKIP);
+    }
+
+    /**
+     * Removes the tracked properties whose {@code CssMetaData} is no longer part of the {@code Styleable},
+     * which happens when a skin is replaced. Such a {@code CssMetaData} must not be used anymore, as it
+     * may resolve its property through the new skin.
+     * <p>
+     * If the {@code Styleable} has a different {@code CssMetaData} with the same name (e.g. provided by the new
+     * skin for a property of the control), it is tracked instead with its own initial value, so the property
+     * is still reset if it was styled through the removed {@code CssMetaData}.
+     */
+    private void removeStaleCssMetaData(Styleable styleable) {
+        Map<CssMetaData, CalculatedValue> cssSetProperties = cacheContainer.cssSetProperties;
+        List<CssMetaData<? extends Styleable, ?>> styleables = styleable.getCssMetaData();
+        List<Entry<CssMetaData, CalculatedValue>> staleEntries = null;
+
+        for (Entry<CssMetaData, CalculatedValue> entry : cssSetProperties.entrySet()) {
+            CssMetaData cssMetaData = entry.getKey();
+            if (cssMetaData != TransitionDefinitionCssMetaData.getInstance() && !containsSame(styleables, cssMetaData)) {
+                if (staleEntries == null) {
+                    staleEntries = new ArrayList<>();
+                }
+
+                staleEntries.add(entry);
+            }
+        }
+
+        if (staleEntries == null) {
+            return;
+        }
+
+        for (Entry<CssMetaData, CalculatedValue> entry : staleEntries) {
+            cssSetProperties.remove(entry.getKey());
+
+            String property = entry.getKey().getProperty();
+            for (CssMetaData cssMetaData : styleables) {
+                if (property.equals(cssMetaData.getProperty())) {
+                    cssSetProperties.putIfAbsent(cssMetaData, new CalculatedValue(
+                        cssMetaData.getInitialValue(styleable), entry.getValue().getOrigin(), false));
+                    break;
+                }
+            }
+        }
+    }
+
+    /**
+     * Same as {@link List#contains(Object)}, but compares by identity, as {@link CssMetaData#equals(Object)}
+     * also compares the class and name.
+     */
+    private static boolean containsSame(List<CssMetaData<? extends Styleable, ?>> styleables, CssMetaData cssMetaData) {
+        for (int i = 0, max = styleables.size(); i < max; i++) {
+            if (styleables.get(i) == cssMetaData) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -950,6 +1005,8 @@ final class CssStyleHelper {
      * that are applied to other properties.
      */
     private void resetProperties(Styleable styleable, Predicate<CssMetaData> isUnstyled) {
+        removeStaleCssMetaData(styleable);
+
         List<Entry<CssMetaData, CalculatedValue>> resetList = null;
 
         Iterator<Entry<CssMetaData, CalculatedValue>> it = cacheContainer.cssSetProperties.entrySet().iterator();
